@@ -893,7 +893,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 34" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 35" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -901,7 +901,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("income", "الدخل والموارد", "الراتب وأي دخل أو مورد إضافي", money(t.income)),
         tile("expenses", "المصروفات", ["actual", "unscheduled"].concat(customSecs("expenses").map(function (c) { return c.id; })).filter(secOn).map(secName).join(" · ") || "—", money(t.actFixed + t.actVar + t.unsched + t.custom)),
-        tile("debts", "الديون والالتزامات", "الديون عليك · الديون لك", money(t.debts)),
+        tile("debts", "الديون والالتزامات", "المتبقي من الديون عليك", money(sum(S.debts.list, function (d) { return d.remaining; }))),
         tile("savings", "الادخار", "الادخار الشهري والسحوبات", money(t.saving)),
         tile("invest", "الاستثمار", "المحفظة والربح والخسارة", money(sum(S.investments.list, function (x) { return x.current; })))),
       notice()];
@@ -1009,7 +1009,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var t = totals(), owed = S.debts.owed || [];
     return [header("الديون والالتزامات", "budget", "الميزانية"),
       el("div", { class: "grid" },
-        tile("debts-owe", "الديون عليك", "القروض والأقساط · قسط الشهر", money(t.debts)),
+        tile("debts-owe", "الديون عليك", "مجموع المتبقي من القروض والأقساط", money(sum(S.debts.list, function (d) { return d.remaining; }))),
         tile("debts-due", "الديون لك", "ما أقرضته للآخرين · المتبقي تحصيله", money(sum(owed, owedLeft))),
         tile("debts-sum", "ملخص الديون", "تحليل الديون ونسبة السداد", null))];
   };
