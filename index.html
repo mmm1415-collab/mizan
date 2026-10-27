@@ -234,6 +234,21 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 .legend div { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: .9rem; }
 .legend i { width: 12px; height: 12px; border-radius: 3px; }
 .legend .pct { color: var(--muted); min-width: 3.5em; text-align: left; }
+.note { display: grid; gap: 8px; }
+.note.done { opacity: .6; }
+.note.done .item-head input { text-decoration: line-through; }
+.note textarea { width: 100%; min-height: 72px; resize: vertical; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font: inherit; line-height: 1.6; }
+.note-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.note-meta select { width: auto; }
+.stars { display: inline-flex; gap: 2px; direction: rtl; }
+.stars button { border: 0; background: none; font-size: 1.35rem; line-height: 1; color: var(--line); cursor: pointer; padding: 2px; }
+.stars button.on { color: var(--gold); }
+.remind { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; border-top: 1px dashed var(--line); padding-top: 8px; }
+.remind input[type="date"] { width: 100%; }
+.remind.on input[type="date"] { border-color: var(--gold); }
+.remind-note { grid-column: 1 / -1; color: var(--muted); font-size: .8rem; }
+.done-btn { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 4px 12px; cursor: pointer; font: inherit; font-size: .85rem; }
+.done-btn.on { border-color: var(--ok); color: var(--ok); }
 .tips { margin: 0; padding-inline-start: 18px; display: grid; gap: 6px; }
 .notice { margin: 0; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; color: var(--muted); font-size: .85rem; text-align: center; }
 .empty { margin: 0; color: var(--muted); text-align: center; padding: 12px; border: 1px dashed var(--line); border-radius: 6px; }
@@ -311,6 +326,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     savings: { items: [{ id: "s1", name: "الادخار الشهري" }], goals: [{ id: "g1", name: "صندوق الطوارئ", target: 0, saved: 0 }, { id: "g2", name: "الإجازة السنوية", target: 0, saved: 0 }] },
     investments: { list: [] },
     sections: { names: {}, hidden: {}, custom: [] },
+    notes: { list: [] },
     zakat: { assets: items("z", ["النقد في الحسابات البنكية", "النقد في اليد", "الذهب والفضة (بقيمتها)", "الأسهم والصناديق بنية المتاجرة", "عروض التجارة", "ديون لك مرجوّة السداد"]), debtsDue: 0, goldPrice: 0, hawl: "", hawlDay: "", hawlMonth: "", paid: 0 }
   };
   var UNSCHED_CATS = ["طارئ صحي", "صيانة مفاجئة", "مناسبة اجتماعية", "سفر", "رسوم ومخالفات", "أخرى"];
@@ -324,7 +340,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   var S = {
     month: now.getFullYear() + "-" + pad(now.getMonth() + 1),
     estimates: clone(DEFAULTS.estimates), debts: clone(DEFAULTS.debts),
-    savings: clone(DEFAULTS.savings), investments: clone(DEFAULTS.investments), zakat: clone(DEFAULTS.zakat), sections: clone(DEFAULTS.sections), security: { hash: "", salt: "" },
+    savings: clone(DEFAULTS.savings), investments: clone(DEFAULTS.investments), zakat: clone(DEFAULTS.zakat), sections: clone(DEFAULTS.sections), notes: clone(DEFAULTS.notes), security: { hash: "", salt: "" },
     months: {}, db: null, mode: "loading", readOnly: false
   };
   function monthDoc(key) { key = key || S.month; if (!S.months[key]) S.months[key] = emptyMonth(); return S.months[key]; }
@@ -365,7 +381,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     setTimeout(function () { if (renderPending && !editing()) { renderPending = false; render(); } }, 0);
   });
 
-  var SETTINGS = ["estimates", "debts", "savings", "investments", "zakat", "sections"];
+  var SETTINGS = ["estimates", "debts", "savings", "investments", "zakat", "sections", "notes"];
   var monthUnsub = null;
   function watchMonth() {
     if (monthUnsub) { monthUnsub(); monthUnsub = null; }
@@ -522,7 +538,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 
   /* ---------- quotes (moving band at the top of every page) ---------- */
   var QUOTES = {"money": [["المال خادم جيد، لكنه سيد فاسد.", "فرانسيس بيكون"], ["ليس المهم كم من المال تجني، بل كم من المال تدخر، وكيف يعمل هذا المال من أجلك.", "روبرت كيوساكي"], ["الثروة هي القدرة على تجربة الحياة بالكامل.", "هنري ديفيد ثورو"], ["الشخص الذي لا يعرف أين يذهب ماله، سيجد نفسه دائماً يتساءل أين ذهب.", ""], ["الفقر ليس نقصاً في المال، بل هو غياب العقلية المنتجة.", ""], ["إذا كنت تعمل من أجل المال، فأنت تعطي القوة لصاحب العمل. إذا كان المال يعمل من أجلك، فأنت من يمتلك القوة.", ""], ["الثروة الحقيقية هي ما تملكه عندما تفقد كل أموالك.", ""], ["الاستثمار في المعرفة يدفع دائماً أفضل الفوائد.", "بنجامين فرانكلين"], ["الأغنياء يستثمرون في الوقت، والفقراء يستثمرون في المال.", ""], ["النجاح المالي هو عبارة عن ٢٠٪ معرفة و٨٠٪ سلوك وانضباط.", "ديف رامزي"]], "saving": [["لا تدخر ما تبقى بعد الإنفاق، بل أنفق ما تبقى بعد الادخار.", "وارن بافيت"], ["كل درهم تدخره هو جندي يعمل في جيش ثروتك المستقبلية.", ""], ["الادخار هو فن العيش بأقل مما تكسب لتتمكن من العيش بأكثر مما كنت تتخيل لاحقاً.", ""], ["الحرمان المؤقت من الكماليات هو الثمن الذي تدفعه مقابل الحرية الأبدية.", ""], ["الرجل الذي يشتري ما لا يحتاجه، يسرق نفسه.", "مثل سويدي"], ["حتى أصغر قطرات الماء يمكنها ملء الحوض، وكذلك أصغر المدخرات.", ""], ["الادخار لا يعني البخل، بل يعني الذكاء في إدارة الموارد.", ""], ["الفرق بين الغني والفقير هو أن الغني يدخر ثم ينفق، والفقير ينفق ثم يحاول الادخار.", ""], ["كن حذراً من النفقات الصغيرة؛ فتسريب بسيط يمكن أن يغرق سفينة كبيرة.", "بنجامين فرانكلين"], ["الادخار هو تأجيل المتعة العابرة من أجل أمان دائم.", ""]], "debt": [["الدين هو الوحش الذي يأكل مستقبلك قبل أن يصل إليك.", ""], ["من يقترض، يبيع حريته.", "أندرو كارنيجي"], ["الديون هي العبيد الجدد في العصر الحديث.", ""], ["أفضل وقت لسداد ديونك كان بالأمس، ثاني أفضل وقت هو الآن.", ""], ["لا تشترِ شيئاً لتبهر أشخاصاً لا تحبهم بأموال لا تملكها.", ""], ["القروض تجعل الحياة تبدو سهلة في البداية، لكنها تجعلها مستحيلة في النهاية.", ""], ["العيش بدون ديون هو أرقى أنواع الرفاهية.", ""], ["الفائدة البنكية على الديون لا تنام، لا تمرض، ولا تأخذ عطلة؛ إنها تلتهمك بصمت.", ""], ["السعادة لا تُشترى ببطاقة ائتمان.", ""], ["أن تنام جائعاً أفضل من أن تستيقظ مديوناً.", "مثل عربي قديم"]], "invest": [["السوق مصمم لنقل الأموال من الشخص غير الصبور إلى الشخص الصبور.", "وارن بافيت"], ["أفضل وقت لزراعة شجرة كان منذ ٢٠ عاماً، ثاني أفضل وقت هو الآن.", "مثل صيني"], ["لا تضع كل بيضك في سلة واحدة.", ""], ["الاستثمار هو عملية تحويل الأموال من شخص يريد المتعة الفورية إلى شخص يريد الأمان المستقبلي.", ""], ["الثروة لا تأتي من الدخل العالي، بل من الأصول التي تدر دخلاً.", ""], ["الخطر الحقيقي هو عدم المخاطرة بأي شيء.", ""], ["المستثمر الذكي هو من يشتري عندما يخاف الجميع، ويبيع عندما يطمع الجميع.", ""], ["المال هو بذرة، إذا زرعتها في أرض الاستثمار أثمرت غابة من الثروة.", ""], ["الفائدة المركبة هي الأعجوبة الثامنة في العالم.", "ألبرت أينشتاين"], ["الاستثمار الناجح يتطلب وقتاً وانضباطاً وصبراً.", ""]], "life": [["المال لا يغير الناس، بل يكشف حقيقتهم فقط.", ""], ["أن تكون غنياً هو أن تملك المال، أما أن تكون ثرياً فهو أن تملك الوقت.", ""], ["الفقير ليس من لا يملك قرشاً، بل من لا يملك حلماً.", ""], ["المال يعطيك خيارات، والخيارات تعطيك الحرية.", ""], ["اجعل هدفك هو الاستقلال المالي، وليس مجرد جمع الأرقام.", ""], ["لا تدع كسب العيش ينسيك بناء حياة.", ""], ["العطاء هو جزء من الثقافة المالية الناجحة؛ المال الذي يخرج بصدق يعود ببركة.", ""], ["التخطيط المالي هو الفرق بين الحلم والواقع.", ""], ["كن سيد مالك، ولا تسمح له بأن يصبح سيدك.", ""], ["الرحلة نحو الثراء تبدأ بخطوة واحدة: قرار بأنك تستحق حياة أفضل.", ""]]};
-  var QUOTE_FOR = { savings: ["saving"], "save-monthly": ["saving"], "save-total": ["saving"], "save-withdraw": ["saving"], debts: ["debt"], "debts-owe": ["debt"], "debts-due": ["debt", "life"], invest: ["invest"], zakat: ["life"], expenses: ["saving", "money"], actual: ["money"], unscheduled: ["saving"], chart: ["money", "invest"], income: ["money"], summary: ["money", "life"], overview: ["money", "life"] };
+  var QUOTE_FOR = { savings: ["saving"], notes: ["life"], "save-monthly": ["saving"], "save-total": ["saving"], "save-withdraw": ["saving"], debts: ["debt"], "debts-owe": ["debt"], "debts-due": ["debt", "life"], invest: ["invest"], zakat: ["life"], expenses: ["saving", "money"], actual: ["money"], unscheduled: ["saving"], chart: ["money", "invest"], income: ["money"], summary: ["money", "life"], overview: ["money", "life"] };
   var lastQuote = "";
   function showQuote(view) {
     var groups = QUOTE_FOR[view] || ["money", "life"], pool = [];
@@ -840,6 +856,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         tile("zakat", "الزكاة", "الأموال الزكوية والنصاب والواجب", null),
         tile("summary", "الملخص المالي", "ملخص الشهر", null),
         tile("chart", "الرسم البياني للميزانية", "مقارنة الأشهر لفترة تختارها", null),
+        tile("notes", "الملحوظات", "ملحوظات وتنبيهات ومقترحات وتوصيات", (function () { var l = (S.notes.list || []).filter(function (n) { return !n.done; }).length; return l ? fmt.format(l) + " لم تُنجز" : null; })()),
         tile("backup", "النسخة الاحتياطية", "تصدير البيانات واستيرادها", null)),
       notice()];
   };
@@ -1415,6 +1432,62 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         h ? (h.days === 0 ? "اليوم موعد حولان الحول." : "حولان الحول القادم بعد " + daysText(h.days) + ".") : "اختر يوم الحول وشهره في «حساب الزكاة» ليظهر الموعد."
       ])),
       el("p", { class: "hint", text: "الحساب تقديري، وفي الحالات الخاصة يُرجع إلى أهل العلم." })];
+  };
+
+  /* ---------- notes: the owner's own remarks, alerts, ideas and recommendations ---------- */
+  var NOTE_TYPES = ["ملحوظة", "تنبيه", "مقترح", "توصية"];
+  var fmtLongDay = new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  function todayKey() { var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  /* a note whose reminder day has come shows at the top of the sections page until it is done or closed */
+  ALERTS.push(function () {
+    var due = (S.notes.list || []).filter(function (n) { return n.remind && !n.done && n.remind <= todayKey() && n.remindClosed !== n.remind; })
+      .sort(function (a, b) { return (+b.stars || 0) - (+a.stars || 0); });
+    if (!due.length) return null;
+    var n = due[0];
+    return { go: "notes", text: "🔔 " + (n.type || "تنبيه") + ": «" + (n.title || "ملحوظة بلا موضوع") + "»" + (due.length > 1 ? " و" + (due.length === 2 ? "تنبيه آخر" : fmt.format(due.length - 1) + " تنبيهات أخرى") : ""),
+      dismiss: function () { due.forEach(function (x) { x.remindClosed = x.remind; }); save("settings/notes"); } };
+  });
+  var noteFilter = "all";
+  VIEWS.notes = function () {
+    if (!S.notes.list) S.notes.list = [];
+    var list = S.notes.list, path = "settings/notes";
+    var shown = list.filter(function (n) { return noteFilter === "all" || (noteFilter === "done" ? n.done : !n.done); });
+    function card(n) {
+      var i = list.indexOf(n);
+      var stars = el("div", { class: "stars", role: "group", "aria-label": "الأهمية" });
+      for (var k = 1; k <= 5; k++) (function (k) {
+        stars.append(el("button", { type: "button", class: k <= (+n.stars || 0) ? "on" : "", text: "★", "aria-label": "الأهمية " + fmt.format(k) + " من ٥", "aria-pressed": k === +n.stars ? "true" : "false",
+          disabled: S.readOnly ? "" : null, onclick: function () { n.stars = +n.stars === k ? 0 : k; save(path); render(); } }));
+      })(k);
+      return el("div", { class: "item note" + (n.done ? " done" : "") },
+        el("div", { class: "item-head" },
+          el("label", { class: "why" }, "الموضوع", textInput("nt-" + n.id, n.title, function (v) { n.title = v; save(path); }, "موضوع الملحوظة", "مثال: مراجعة اشتراك الجوال")),
+          delBtn(n.title, remover(list, i, path))),
+        el("label", { class: "why" }, "النص",
+          el("textarea", { id: "nx-" + n.id, text: n.text || "", placeholder: "اكتب الملحوظة أو التنبيه أو المقترح…", "aria-label": "نص الملحوظة", disabled: S.readOnly ? "" : null,
+            oninput: function (e) { n.text = e.target.value; save(path); } })),
+        el("div", { class: "note-meta" },
+          select("ny-" + n.id, NOTE_TYPES, n.type || NOTE_TYPES[0], function (v) { n.type = v; save(path); }, "النوع"),
+          stars,
+          el("button", { type: "button", class: "done-btn" + (n.done ? " on" : ""), "aria-pressed": n.done ? "true" : "false", text: n.done ? "✓ منجز" : "لم يُنجز", disabled: S.readOnly ? "" : null,
+            onclick: function () { n.done = !n.done; save(path); render(); } })),
+        el("div", { class: "remind" + (n.remind ? " on" : "") },
+          el("label", { class: "why" }, "🔔 التنبيه في يوم",
+            el("input", { type: "date", id: "nr-" + n.id, value: n.remind || "", disabled: S.readOnly ? "" : null,
+              onchange: function (e) { n.remind = e.target.value; n.remindClosed = ""; save(path); render(); } })),
+          n.remind ? el("button", { type: "button", class: "add", text: "إلغاء التنبيه", onclick: function () { n.remind = ""; save(path); render(); } }) : null,
+          el("small", { class: "remind-note", text: !n.remind ? "اختر يومًا ليظهر لك تنبيه بهذه الملحوظة في صفحة الأقسام." : n.done ? "الملحوظة منجزة، فلن يظهر التنبيه." : n.remind <= todayKey() ? "حلّ موعد التنبيه." : "سيظهر التنبيه في " + fmtLongDay.format(new Date(n.remind + "T12:00:00")) + "." })));
+    }
+    var counts = { all: list.length, open: list.filter(function (n) { return !n.done; }).length, done: list.filter(function (n) { return n.done; }).length };
+    return [header("الملحوظات", "sections", "الأقسام"),
+      el("p", { class: "hint", text: "اكتب ما تريد من ملحوظات وتنبيهات ومقترحات وتوصيات، وحدد أهميتها بالنجوم، وعلّمها «منجز» عند تنفيذها." }),
+      el("div", { class: "seg", role: "group", "aria-label": "عرض" }, [["all", "الكل"], ["open", "لم يُنجز"], ["done", "منجز"]].map(function (f) {
+        return el("button", { type: "button", "aria-pressed": noteFilter === f[0] ? "true" : "false", text: f[1] + " (" + fmt.format(counts[f[0]]) + ")", onclick: function () { noteFilter = f[0]; render(); } });
+      })),
+      el("div", { class: "card" },
+        shown.length ? (noteFilter === "all" ? sortable(list, path, list.map(card)) : el("div", { class: "rows" }, shown.map(card)))
+          : el("p", { class: "empty", text: noteFilter === "done" ? "لا توجد ملحوظات منجزة." : noteFilter === "open" ? "كل الملحوظات منجزة." : "لا توجد ملحوظات بعد." }),
+        (function () { var b = addBtn("إضافة ملحوظة", list, function () { noteFilter = "all"; return { title: "", text: "", type: NOTE_TYPES[0], stars: 0, done: false }; }, path, "nt-"); if (b) b.classList.add("add-wide"); return b; })())];
   };
 
   /* ---------- budget chart over a chosen period ---------- */
