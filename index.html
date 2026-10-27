@@ -140,7 +140,9 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 .alert-wrap { position: relative; }
 .alert-wrap .alert { padding-inline: 40px; }
 .alert-x { position: absolute; top: 50%; left: 4px; transform: translateY(-50%); }
-.sec-row { grid-template-columns: minmax(0, 1fr) auto; }
+.sec-row { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+.sec-label { display: grid; gap: 4px; font-size: .8rem; color: var(--gold); }
+.sec-label input { border-color: var(--gold); }
 .add.danger { color: var(--bad); border-color: var(--bad); }
 .restore { display: grid; gap: 8px; justify-items: center; }
 .copy-prev { display: grid; justify-items: center; gap: 6px; }
@@ -290,7 +292,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     debts: { list: [] },
     savings: { goals: [{ id: "g1", name: "صندوق الطوارئ", target: 0, saved: 0 }, { id: "g2", name: "الإجازة السنوية", target: 0, saved: 0 }] },
     investments: { list: [] },
-    sections: { names: {}, hidden: {} },
+    sections: { names: {}, hidden: {}, custom: [] },
     zakat: { assets: items("z", ["النقد في الحسابات البنكية", "النقد في اليد", "الذهب والفضة (بقيمتها)", "الأسهم والصناديق بنية المتاجرة", "عروض التجارة", "ديون لك مرجوّة السداد"]), debtsDue: 0, goldPrice: 0, hawl: "", hawlDay: "", hawlMonth: "", paid: 0 }
   };
   var UNSCHED_CATS = ["طارئ صحي", "صيانة مفاجئة", "مناسبة اجتماعية", "سفر", "رسوم ومخالفات", "أخرى"];
@@ -528,10 +530,13 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       actFixed: secOn("act-fixed") ? act(S.estimates.fixed) : 0,
       actVar: secOn("act-variable") ? act(S.estimates.variable) : 0,
       unsched: secOn("unscheduled") ? sum(m.unscheduled, amt) : 0,
+      customAct: customTotal(m, "actual"),
+      customExp: customTotal(m, "expenses"),
       debts: sum(S.debts.list, function (d) { return (+d.remaining || 0) > 0 ? d.installment : 0; }),
       saving: +m.savingDeposit || 0
     };
-    t.spent = t.actFixed + t.actVar + t.unsched + t.debts;
+    t.custom = t.customAct + t.customExp;
+    t.spent = t.actFixed + t.actVar + t.unsched + t.custom + t.debts;
     t.left = t.income - t.spent - t.saving;
     return t;
   }
@@ -683,7 +688,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 
   var copyNotes = {};
   /* fill this month from the one before: only empty amounts are filled, nothing is overwritten */
-  function copyPrevBtn(what) {
+  function copyPrevBtn(what, list) {
     if (S.readOnly) return null;
     var note = copyNotes[what] || ""; copyNotes[what] = "";
     return el("div", { class: "copy-prev" },
@@ -699,7 +704,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
               else if (!+cur.amount && +it.amount) { cur.amount = it.amount; n++; }
             });
           } else if (pm) {
-            S.estimates[what].forEach(function (it) {
+            (list || S.estimates[what]).forEach(function (it) {
               var v = +(pm.actual[it.id] || 0);
               if (v && !+(m.actual[it.id] || 0)) { m.actual[it.id] = v; n++; }
             });
@@ -712,31 +717,54 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       note ? el("p", { class: "hint", text: note }) : null);
   }
 
-  /* expense sections the user can rename or remove (a removed one leaves the totals until restored) */
+  /* expense sections the user can rename, add or remove (a removed one leaves the totals until restored) */
   var SEC_DEFAULT = { actual: "المصروفات المجدولة", unscheduled: "المصروفات غير المجدولة", "act-fixed": "المصروفات الثابتة", "act-variable": "المصروفات غير الثابتة" };
-  function secName(k) { var n = (S.sections.names || {})[k]; return n && n.trim() ? n.trim() : SEC_DEFAULT[k]; }
-  function secOn(k) { var h = S.sections.hidden || {}; return !h[k] && !((k === "act-fixed" || k === "act-variable") && h.actual); }
-  var secEditing = "";
+  function customSecs(parent) { return (S.sections.custom || []).filter(function (c) { return !parent || c.parent === parent; }); }
+  function customSec(k) { return (S.sections.custom || []).filter(function (c) { return c.id === k; })[0]; }
+  function secName(k) {
+    var c = customSec(k); if (c) return c.name && c.name.trim() ? c.name.trim() : "قسم جديد";
+    var n = (S.sections.names || {})[k]; return n && n.trim() ? n.trim() : SEC_DEFAULT[k];
+  }
+  function secOn(k) {
+    var h = S.sections.hidden || {}, c = customSec(k);
+    if (h[k]) return false;
+    return !((k === "act-fixed" || k === "act-variable" || (c && c.parent === "actual")) && h.actual);
+  }
+  var secEditing = "", secFocus = "";
+  /* the tiles of one expense level, or (in edit mode) their names with delete, add and restore */
   function secEditor(parent, keys, subs, figs) {
     var path = "settings/sections";
-    S.sections.names = S.sections.names || {}; S.sections.hidden = S.sections.hidden || {};
+    S.sections.names = S.sections.names || {}; S.sections.hidden = S.sections.hidden || {}; S.sections.custom = S.sections.custom || [];
+    keys = keys.concat(customSecs(parent).map(function (c) { return c.id; }));
     var shown = keys.filter(function (k) { return !S.sections.hidden[k]; }), gone = keys.filter(function (k) { return S.sections.hidden[k]; });
     if (secEditing !== parent) {
-      return [el("div", { class: "grid" }, shown.map(function (k) { return tile(k, secName(k), subs[k], figs[k]); })),
+      return [el("div", { class: "grid" }, shown.map(function (k) { var c = customSec(k); return tile(c ? "cs-" + k : k, secName(k), c ? "بنود تختارها أنت" : subs[k], figs(k)); })),
         !shown.length ? el("p", { class: "empty", text: "حذفت كل الأقسام هنا. اضغط «تعديل الأقسام» لاستعادتها." }) : null,
-        S.readOnly ? null : el("div", { class: "copy-prev" }, el("button", { class: "add", type: "button", text: "✎ تعديل الأقسام", onclick: function () { secEditing = parent; render(); } }))];
+        S.readOnly ? null : el("div", { class: "copy-prev" }, el("button", { class: "add", type: "button", text: "✎ تعديل الأقسام أو إضافة قسم", onclick: function () { secEditing = parent; render(); } }))];
     }
-    return [el("div", { class: "card" },
+    var out = [el("div", { class: "card" },
         el("h3", { text: "تعديل الأقسام" }),
+        el("p", { class: "hint", text: "اضغط على اسم القسم لتغييره." }),
         el("div", { class: "rows" }, shown.map(function (k) {
+          var c = customSec(k);
           return el("div", { class: "row sec-row" },
-            textInput("sn-" + k, S.sections.names[k] || secName(k), function (v) { S.sections.names[k] = v; save(path); }, "اسم القسم", SEC_DEFAULT[k]),
-            el("button", { class: "add danger", type: "button", text: "حذف القسم", onclick: function () { S.sections.hidden[k] = true; save(path); render(); } }));
+            el("label", { class: "sec-label" }, el("span", { text: "✎ اسم القسم" }),
+              textInput("sn-" + k, c ? c.name : (S.sections.names[k] || secName(k)), function (v) { if (c) c.name = v; else S.sections.names[k] = v; save(path); }, "اسم القسم", c ? "مثال: مصروفات الأطفال" : SEC_DEFAULT[k])),
+            el("button", { class: "add danger", type: "button", text: "حذف", onclick: function () { S.sections.hidden[k] = true; save(path); render(); } }));
         })),
+        el("button", { class: "add", type: "button", text: "+ إضافة قسم", onclick: function () {
+          var c = { id: "c" + uid(), name: "", parent: parent, items: [] };
+          S.sections.custom.push(c); save(path); secFocus = "sn-" + c.id; render();
+        } }),
         gone.length ? el("div", { class: "restore" }, el("p", { class: "hint", text: "الأقسام المحذوفة:" }),
           gone.map(function (k) { return el("button", { class: "add", type: "button", text: "↺ استعادة «" + secName(k) + "»", onclick: function () { delete S.sections.hidden[k]; save(path); render(); } }); })) : null,
         el("p", { class: "hint", text: "حذف القسم يخفيه ويُخرج مبالغه من الحسابات، ولا يمسح بياناته. يمكنك استعادته متى شئت." }),
         el("button", { class: "enter small", type: "button", text: "تم", onclick: function () { secEditing = ""; render(); } }))];
+    if (secFocus) { var f = secFocus; secFocus = ""; setTimeout(function () { var n = $(f); if (n) n.focus(); }, 0); }
+    return out;
+  }
+  function customTotal(m, parent) {
+    return sum(customSecs(parent).filter(function (c) { return secOn(c.id); }), function (c) { return sum(c.items || [], function (it) { return m.actual[it.id] || 0; }); });
   }
 
   /* ---------- views ---------- */
@@ -755,7 +783,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       })) : null,
       el("div", { class: "grid" },
         tile("income", "الدخل والموارد", "الراتب وأي دخل أو مورد إضافي", money(t.income)),
-        tile("expenses", "المصروفات", ["actual", "unscheduled"].filter(secOn).map(secName).join(" · ") || "—", money(t.actFixed + t.actVar + t.unsched)),
+        tile("expenses", "المصروفات", ["actual", "unscheduled"].concat(customSecs("expenses").map(function (c) { return c.id; })).filter(secOn).map(secName).join(" · ") || "—", money(t.actFixed + t.actVar + t.unsched + t.custom)),
         tile("debts", "الديون والالتزامات", "الأقساط الشهرية", money(t.debts)),
         tile("savings", "الادخار", "إيداع الشهر وأهداف الادخار", money(t.saving)),
         tile("invest", "الاستثمار", "المحفظة والربح والخسارة", money(sum(S.investments.list, function (x) { return x.current; }))),
@@ -770,8 +798,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var t = totals();
     return [header("المصروفات", "sections", "الأقسام"), monthBar()].concat(
       secEditor("expenses", ["actual", "unscheduled"],
-        { actual: ["act-fixed", "act-variable"].filter(secOn).map(secName).join(" · "), unscheduled: "مصروفات خارج الخطة" },
-        { actual: money(t.actFixed + t.actVar), unscheduled: money(t.unsched) }));
+        { actual: ["act-fixed", "act-variable"].concat(customSecs("actual").map(function (c) { return c.id; })).filter(secOn).map(secName).join(" · "), unscheduled: "مصروفات خارج الخطة" },
+        function (k) { return k === "actual" ? money(t.actFixed + t.actVar + t.customAct) : k === "unscheduled" ? money(t.unsched) : money(sumOne(k)); }));
   };
 
   VIEWS.actual = function () {
@@ -780,29 +808,41 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("p", { class: "hint", text: "المصروفات المتكررة كل شهر، وما صرفته عليها في الشهر المختار." })].concat(
       secEditor("actual", ["act-fixed", "act-variable"],
         { "act-fixed": "مبالغ لا تتغير من شهر لآخر", "act-variable": "مبالغ تتغير حسب الاستهلاك" },
-        { "act-fixed": money(t.actFixed), "act-variable": money(t.actVar) }));
+        function (k) { return k === "act-fixed" ? money(t.actFixed) : k === "act-variable" ? money(t.actVar) : money(sumOne(k)); }));
   };
-  function actList(kind, sec) {
+  function sumOne(k) { var c = customSec(k), m = monthDoc(); return c ? sum(c.items || [], function (it) { return m.actual[it.id] || 0; }) : 0; }
+  /* a section of recurring items: names stay for every month, amounts are kept per month */
+  function itemsView(o) {
     return function () {
-      var title = secName(sec);
-      var list = S.estimates[kind], m = monthDoc(), path = "months/" + S.month, itemsPath = "settings/estimates";
+      var title = o.title(), list = o.list();
+      var m = monthDoc(), path = "months/" + S.month, itemsPath = o.itemsPath;
       totalFns.act = function () { return money(sum(list, function (x) { return m.actual[x.id] || 0; })); };
-      return [header(title, "actual", secName("actual")), monthBar(),
+      return [header(title, o.back(), o.backLabel()), monthBar(),
         el("div", { class: "card" },
           list.length ? sortable(list, itemsPath, list.map(function (it, i) {
             return el("div", { class: "row" },
               textInput("an-" + it.id, it.name, function (v) { it.name = v; save(itemsPath); }, "اسم البند", "اسم البند"),
               amountInput("aa-" + it.id, m.actual[it.id], function (v) { m.actual[it.id] = v; save(path); }, "مصروف " + it.name),
               delBtn(it.name, remover(list, i, itemsPath)));
-          })) : el("p", { class: "empty", text: "لا توجد بنود بعد." }),
+          })) : el("p", { class: "empty", text: "لا توجد بنود بعد. أضف أول بند." }),
           addBtn("إضافة بند", list, function () { return { name: "", amount: 0 }; }, itemsPath, "an-"),
           totalRow("مجموع الشهر", "act")),
-        copyPrevBtn(kind),
+        copyPrevBtn(o.copyKey, list),
         el("p", { class: "hint", text: "البنود نفسها تبقى لكل الأشهر، والمبالغ تُسجَّل لكل شهر على حدة." })];
     };
   }
+  function actList(kind, sec) {
+    return itemsView({ list: function () { return S.estimates[kind]; }, itemsPath: "settings/estimates", title: function () { return secName(sec); },
+      back: function () { return "actual"; }, backLabel: function () { return secName("actual"); }, copyKey: kind });
+  }
   VIEWS["act-fixed"] = actList("fixed", "act-fixed");
   VIEWS["act-variable"] = actList("variable", "act-variable");
+  function registerCustomViews() {
+    customSecs().forEach(function (c) {
+      VIEWS["cs-" + c.id] = itemsView({ list: function () { c.items = c.items || []; return c.items; }, itemsPath: "settings/sections", title: function () { return secName(c.id); },
+        back: function () { return c.parent; }, backLabel: function () { return c.parent === "actual" ? secName("actual") : "المصروفات"; }, copyKey: c.id });
+    });
+  }
 
   VIEWS.unscheduled = function () {
     var m = monthDoc(), path = "months/" + S.month, list = m.unscheduled;
@@ -1033,6 +1073,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       secOn("act-fixed") && { k: secName("act-fixed"), v: t.actFixed, c: "#6f9ee8" },
       secOn("act-variable") && { k: secName("act-variable"), v: t.actVar, c: "#b58be0" },
       secOn("unscheduled") && { k: secName("unscheduled"), v: t.unsched, c: "#e58272" },
+      customSecs().length && { k: "الأقسام المضافة", v: t.custom, c: "#7fb8b0" },
       { k: "أقساط الديون", v: t.debts, c: "#e3b552" },
       { k: "الادخار", v: t.saving, c: "#5cc29a" },
       { k: "المتبقي", v: Math.max(t.left, 0), c: "#4a6795" }
@@ -1070,7 +1111,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     { k: "unsched", sec: "unscheduled", n: "المصروفات غير المجدولة", c: "#c98500", f: function (t) { return t.unsched; } },
     { k: "debts", n: "أقساط الديون", c: "#d55181", f: function (t) { return t.debts; } },
     { k: "saving", n: "الادخار", c: "#008300", f: function (t) { return t.saving; } },
-    { k: "left", n: "المتبقي", c: "#9085e9", f: function (t) { return t.left; } }
+    { k: "left", n: "المتبقي", c: "#9085e9", f: function (t) { return t.left; } },
+    { k: "custom", n: "الأقسام المضافة", c: "#e66767", f: function (t) { return t.custom; } }
   ];
   var CH = Object.assign({ from: addMonths(realMonth(), -5), to: realMonth(), on: { income: 1, exp: 1, saving: 1 }, type: "line" }, lsGet("ui/chart") || {});
   if (CH.on.exp) { delete CH.on.exp; CH.on.fixed = 1; CH.on.variable = 1; }
@@ -1081,7 +1123,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   function monthName(key, withYear) { var p = key.split("-").map(Number), d = new Date(p[0], p[1] - 1, 1); return withYear ? fmtMonth.format(d) : fmtShort.format(d); }
   function niceStep(span, n) { var raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw || 1))), r = raw / mag; return (r <= 1 ? 1 : r <= 2 ? 2 : r <= 2.5 ? 2.5 : r <= 5 ? 5 : 10) * mag; }
   VIEWS.chart = function () {
-    var SER = SERIES.filter(function (sr) { return !sr.sec || secOn(sr.sec); }).map(function (sr) { return sr.sec ? Object.assign({}, sr, { n: secName(sr.sec) }) : sr; });
+    var SER = SERIES.filter(function (sr) { return (!sr.sec || secOn(sr.sec)) && (sr.k !== "custom" || customSecs().length); }).map(function (sr) { return sr.sec ? Object.assign({}, sr, { n: secName(sr.sec) }) : sr; });
     var a = CH.from, b = CH.to;
     if (monthDiff(a, b) < 0) { var x = a; a = b; b = x; }
     var keys = []; for (var k = a; monthDiff(k, b) >= 0 && keys.length < 60; k = addMonths(k, 1)) keys.push(k);
@@ -1289,6 +1331,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   }
   function render() {
     var v = location.hash.slice(1);
+    registerCustomViews();
     if (!VIEWS[v]) v = "home";
     if (v !== "home" && (!secLoaded || !isUnlocked())) v = "home";
     var changed = v !== current;
