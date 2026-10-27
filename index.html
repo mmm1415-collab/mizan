@@ -849,11 +849,24 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         return a.dismiss ? el("div", { class: "alert-wrap" }, link, el("button", { class: "x alert-x", type: "button", "aria-label": "إخفاء التذكير", text: "×", onclick: function () { a.dismiss(); render(); } })) : link;
       })) : null,
       el("div", { class: "grid" },
+        tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", money(t.left)),
+        tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
+      notice()];
+  };
+  VIEWS.budget = function () {
+    var t = totals();
+    return [header("الميزانية", "sections", "الأقسام"),
+      el("div", { class: "grid" },
         tile("income", "الدخل والموارد", "الراتب وأي دخل أو مورد إضافي", money(t.income)),
         tile("expenses", "المصروفات", ["actual", "unscheduled"].concat(customSecs("expenses").map(function (c) { return c.id; })).filter(secOn).map(secName).join(" · ") || "—", money(t.actFixed + t.actVar + t.unsched + t.custom)),
         tile("debts", "الديون والالتزامات", "الديون عليك · الديون لك", money(t.debts)),
-        tile("savings", "الادخار", "إيداع الشهر وأهداف الادخار", money(t.saving)),
-        tile("invest", "الاستثمار", "المحفظة والربح والخسارة", money(sum(S.investments.list, function (x) { return x.current; }))),
+        tile("savings", "الادخار", "الادخار الشهري والسحوبات", money(t.saving)),
+        tile("invest", "الاستثمار", "المحفظة والربح والخسارة", money(sum(S.investments.list, function (x) { return x.current; })))),
+      notice()];
+  };
+  VIEWS.services = function () {
+    return [header("الخدمات", "sections", "الأقسام"),
+      el("div", { class: "grid" },
         tile("zakat", "الزكاة", "الأموال الزكوية والنصاب والواجب", null),
         tile("summary", "الملخص المالي", "ملخص الشهر", null),
         tile("chart", "الرسم البياني للميزانية", "مقارنة الأشهر لفترة تختارها", null),
@@ -868,7 +881,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         { actual: "مصروفات متكررة كل شهر", unscheduled: "مصروفات خارج الخطة" },
         function (k) { return k === "actual" ? money(t.actFixed) : k === "unscheduled" ? money(t.unsched) : money(sumOne(k)); });
     if (secEditing !== "expenses" && parts[0]) parts[0].append(tile("exp-sum", "ملخص المصروفات", "حسب القسم وأكبر البنود", null));
-    return [header("المصروفات", "sections", "الأقسام"), monthBar()].concat(parts);
+    return [header("المصروفات", "budget", "الميزانية"), monthBar()].concat(parts);
   };
 
 
@@ -952,7 +965,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   function owedLeft(x) { return Math.max((+x.amount || 0) - (+x.paid || 0), 0); }
   VIEWS.debts = function () {
     var t = totals(), owed = S.debts.owed || [];
-    return [header("الديون والالتزامات", "sections", "الأقسام"),
+    return [header("الديون والالتزامات", "budget", "الميزانية"),
       el("div", { class: "grid" },
         tile("debts-owe", "الديون عليك", "القروض والأقساط · قسط الشهر", money(t.debts)),
         tile("debts-due", "الديون لك", "ما أقرضته للآخرين · المتبقي تحصيله", money(sum(owed, owedLeft))),
@@ -1023,7 +1036,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 
   VIEWS.savings = function () {
     var t = totals();
-    return [header("الادخار", "sections", "الأقسام"), monthBar(),
+    return [header("الادخار", "budget", "الميزانية"), monthBar(),
       el("div", { class: "grid" },
         tile("save-monthly", "الادخار الشهري", "الرقم والاسم والمبلغ الشهري", money(t.saving)),
         tile("save-withdraw", "السحوبات من الادخار", "ما سحبته من مدخراتك هذا الشهر", money(withdrawTotal(monthDoc()))),
@@ -1120,7 +1133,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 
   VIEWS.invest = function () {
     var list = S.investments.list;
-    return [header("الاستثمار", "sections", "الأقسام"),
+    return [header("الاستثمار", "budget", "الميزانية"),
       el("div", { class: "grid" },
         tile("invest-list", "المحفظة الاستثمارية", "المبلغ المستثمر والقيمة الحالية", money(sum(list, function (x) { return x.current; }))),
         tile("invest-sum", "ملخص الاستثمار", "الربح والتوزيع والأداء", null))];
@@ -1158,7 +1171,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 
   VIEWS.zakat = function () {
     var c = zakatCalc();
-    return [header("الزكاة", "sections", "الأقسام"),
+    return [header("الزكاة", "services", "الخدمات"),
       el("div", { class: "grid" },
         tile("zakat-calc", "حساب الزكاة", "الأموال الزكوية والنصاب وموعد الحول", c.due ? money(c.due) : null),
         tile("zakat-sum", "ملخص الزكاة", "الواجب والمُخرَج والموعد القادم", null))];
@@ -1246,14 +1259,14 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 
   VIEWS.summary = function () {
     var t = totals();
-    return [header("الملخص المالي", "sections", "الأقسام"), monthBar(),
+    return [header("الملخص المالي", "services", "الخدمات"), monthBar(),
       el("div", { class: "grid" },
         tile("overview", "ملخص الشهر", "أين ذهب المال وكم بقي", money(t.left)))];
   };
 
   VIEWS.income = function () {
     var t = totals();
-    return [header("الدخل والموارد", "sections", "الأقسام"), monthBar(),
+    return [header("الدخل والموارد", "budget", "الميزانية"), monthBar(),
       el("div", { class: "grid" },
         tile("income-list", "مصادر الدخل", "الراتب وأي دخل أو مورد إضافي", money(t.income)),
         tile("income-sum", "ملخص الدخل", "المصادر والمقارنة والمتوسط", null))];
@@ -1479,7 +1492,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           el("small", { class: "remind-note", text: !n.remind ? "اختر يومًا ليظهر لك تنبيه بهذه الملحوظة في صفحة الأقسام." : n.done ? "الملحوظة منجزة، فلن يظهر التنبيه." : n.remind <= todayKey() ? "حلّ موعد التنبيه." : "سيظهر التنبيه في " + fmtLongDay.format(new Date(n.remind + "T12:00:00")) + "." })));
     }
     var counts = { all: list.length, open: list.filter(function (n) { return !n.done; }).length, done: list.filter(function (n) { return n.done; }).length };
-    return [header("الملحوظات", "sections", "الأقسام"),
+    return [header("الملحوظات", "services", "الخدمات"),
       el("p", { class: "hint", text: "اكتب ما تريد من ملحوظات وتنبيهات ومقترحات وتوصيات، وحدد أهميتها بالنجوم، وعلّمها «منجز» عند تنفيذها." }),
       el("div", { class: "seg", role: "group", "aria-label": "عرض" }, [["all", "الكل"], ["open", "لم يُنجز"], ["done", "منجز"]].map(function (f) {
         return el("button", { type: "button", "aria-pressed": noteFilter === f[0] ? "true" : "false", text: f[1] + " (" + fmt.format(counts[f[0]]) + ")", onclick: function () { noteFilter = f[0]; render(); } });
@@ -1550,7 +1563,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           el("button", { type: "button", "aria-pressed": CH.type === "line" ? "true" : "false", text: "خطوط", onclick: function () { CH.type = "line"; chartPrefs(); } }),
           el("button", { type: "button", "aria-pressed": CH.type === "bar" ? "true" : "false", text: "أعمدة", onclick: function () { CH.type = "bar"; chartPrefs(); } })))
     ];
-    var head = header("الرسم البياني للميزانية", "sections", "الأقسام");
+    var head = header("الرسم البياني للميزانية", "services", "الخدمات");
     if (missing.length) {
       Promise.all(missing.map(loadMonth)).then(function () { if (current === "chart") render(); });
       return [head].concat(controls, el("div", { class: "card" }, el("p", { class: "empty", text: "جارٍ تجهيز الرسم…" })));
@@ -1671,7 +1684,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     confirmBox.append(el("button", { class: "enter small", type: "button", text: "نعم، استورد", onclick: doImport }),
       el("button", { class: "add", type: "button", text: "إلغاء", onclick: function () { pendingImport = null; confirmBox.hidden = true; msg.textContent = ""; } }));
     var last = lsGet("lastBackup");
-    return [header("النسخة الاحتياطية", "sections", "الأقسام"),
+    return [header("النسخة الاحتياطية", "services", "الخدمات"),
       el("p", { class: "hint", text: "بياناتك محفوظة في هذا الجهاز فقط. صدّر نسخة احتياطية كل شهر، واحتفظ بها خارج الجهاز، لتسترجعها إذا غيّرت جوالك أو حذفت التطبيق." }),
       el("div", { class: "card" },
         el("h3", { text: "تصدير" }),
