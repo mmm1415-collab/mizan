@@ -131,6 +131,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 .item-head { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 52px; gap: 8px; align-items: center; }
 .row.grip-on { grid-template-columns: 28px minmax(0, 1fr) 96px 52px; }
 .item-head.grip-on { grid-template-columns: 28px minmax(0, 1fr) 52px; }
+.add.add-wide { width: 100%; justify-self: stretch; border-style: solid; border-color: var(--gold); color: var(--gold); font-weight: 700; padding: 10px; }
 .save-head { display: grid; grid-template-columns: 22px minmax(0, 1fr) 84px 52px; gap: 8px; font-size: .8rem; color: var(--gold); text-align: center; }
 .save-head.grip-on { grid-template-columns: 28px 22px minmax(0, 1fr) 76px 52px; }
 .save-row { grid-template-columns: 22px minmax(0, 1fr) 84px 52px; }
@@ -947,7 +948,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
             amountInput("sva-" + it.id, savedOf(m, it.id), function (v) { setSaved(m, it.id, v); save(mpath); }, "مبلغ " + (it.name || "الادخار") + " هذا الشهر"),
             delBtn(it.name, remover(list, i, path)));
         })) : el("p", { class: "empty", text: "لا توجد بنود ادخار." }),
-        addBtn("إضافة ادخار", list, function () { return { name: "" }; }, path, "svn-"),
+        (function () { var btn = addBtn("إضافة عنصر ادخار", list, function () { return { name: "" }; }, path, "svn-"); if (btn) btn.classList.add("add-wide"); return btn; })(),
         totalRow("ادخار هذا الشهر", "svMonth"), totalRow("النسبة من الدخل", "sv")),
       copyPrevBtn("saving")];
   };
