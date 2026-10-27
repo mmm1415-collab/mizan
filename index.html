@@ -240,6 +240,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 .note textarea { width: 100%; min-height: 72px; resize: vertical; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font: inherit; line-height: 1.6; }
 .note-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .note-meta select { width: auto; }
+.imp { display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--gold); }
 .stars { display: inline-flex; gap: 2px; direction: rtl; }
 .stars button { border: 0; background: none; font-size: 1.35rem; line-height: 1; color: var(--line); cursor: pointer; padding: 2px; }
 .stars button.on { color: var(--gold); }
@@ -1444,7 +1445,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       .sort(function (a, b) { return (+b.stars || 0) - (+a.stars || 0); });
     if (!due.length) return null;
     var n = due[0];
-    return { go: "notes", text: "🔔 " + (n.type || "تنبيه") + ": «" + (n.title || "ملحوظة بلا موضوع") + "»" + (due.length > 1 ? " و" + (due.length === 2 ? "تنبيه آخر" : fmt.format(due.length - 1) + " تنبيهات أخرى") : ""),
+    return { go: "notes", text: "🔔 تنبيه: «" + (n.title || "ملحوظة بلا موضوع") + "»" + (due.length > 1 ? " و" + (due.length === 2 ? "تنبيه آخر" : fmt.format(due.length - 1) + " تنبيهات أخرى") : ""),
       dismiss: function () { due.forEach(function (x) { x.remindClosed = x.remind; }); save("settings/notes"); } };
   });
   var noteFilter = "all";
@@ -1467,8 +1468,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           el("textarea", { id: "nx-" + n.id, text: n.text || "", placeholder: "اكتب الملحوظة أو التنبيه أو المقترح…", "aria-label": "نص الملحوظة", disabled: S.readOnly ? "" : null,
             oninput: function (e) { n.text = e.target.value; save(path); } })),
         el("div", { class: "note-meta" },
-          select("ny-" + n.id, NOTE_TYPES, n.type || NOTE_TYPES[0], function (v) { n.type = v; save(path); }, "النوع"),
-          stars,
+          el("div", { class: "imp" }, el("span", { text: "الأهمية" }), stars),
           el("button", { type: "button", class: "done-btn" + (n.done ? " on" : ""), "aria-pressed": n.done ? "true" : "false", text: n.done ? "✓ منجز" : "لم يُنجز", disabled: S.readOnly ? "" : null,
             onclick: function () { n.done = !n.done; save(path); render(); } })),
         el("div", { class: "remind" + (n.remind ? " on" : "") },
