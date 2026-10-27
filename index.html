@@ -936,8 +936,6 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   VIEWS["save-monthly"] = function () {
     var m = monthDoc(), mpath = "months/" + S.month, path = "settings/savings", list = saveItems();
     totalFns.sv = function () { var t = totals(); return t.income ? fmtPct.format(t.saving / t.income) + " من الدخل" : "أدخل دخل الشهر لحساب النسبة"; };
-    totalFns.svTarget = function () { var t = totals(), r = +S.savings.rate || 0; return !r ? "اكتب النسبة أعلاه" : t.income ? money(t.income * r / 100) : "أدخل دخل الشهر أولًا"; };
-    totalFns.svGap = function () { var t = totals(), r = +S.savings.rate || 0; if (!r || !t.income) return "—"; var d = t.saving - t.income * r / 100; return d >= 0 ? "تحقق الهدف" : "باقٍ " + money(-d); };
     totalFns.svMonth = function () { return money(totals().saving); };
     return [header("الادخار الشهري", "savings", "الادخار"), monthBar(),
       el("div", { class: "card" },
@@ -951,13 +949,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         })) : el("p", { class: "empty", text: "لا توجد بنود ادخار." }),
         addBtn("إضافة ادخار", list, function () { return { name: "" }; }, path, "svn-"),
         totalRow("ادخار هذا الشهر", "svMonth"), totalRow("النسبة من الدخل", "sv")),
-      copyPrevBtn("saving"),
-      el("div", { class: "card" },
-        el("h3", { text: "نسبة الادخار المستهدفة" }),
-        el("div", { class: "row" }, el("span", { class: "lbl", text: "النسبة من الدخل (٪)" }),
-          el("input", { class: "amt", id: "sr", inputmode: "decimal", autocomplete: "off", placeholder: "مثال: ٢٠", "aria-label": "نسبة الادخار المستهدفة من الدخل", value: S.savings.rate ? String(S.savings.rate) : "", disabled: S.readOnly ? "" : null,
-            oninput: function (e) { S.savings.rate = Math.min(parseAmount(e.target.value), 100); save(path); refreshTotals(); } }), el("span", { text: "٪" })),
-        totalRow("المبلغ المستهدف هذا الشهر", "svTarget"), totalRow("مقارنة بالهدف", "svGap"))];
+      copyPrevBtn("saving")];
   };
 
   VIEWS["save-withdraw"] = function () {
@@ -1176,8 +1168,6 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var tips = [];
     if (t.income && t.unsched / t.income > 0.1) tips.push("المصروفات غير المجدولة تجاوزت ١٠٪ من الدخل. صندوق طوارئ يغطي ثلاثة أشهر يخفف أثرها.");
     if (t.income && t.debts / t.income > 0.33) tips.push("أقساط الديون أكثر من ثلث الدخل. تجنّب أي التزام جديد حتى تنخفض.");
-    var goalRate = (+S.savings.rate || 10) / 100;
-    if (t.income && t.saving / t.income < goalRate) tips.push("الادخار هذا الشهر " + fmtPct.format(t.saving / t.income) + " من الدخل، والهدف " + fmtPct.format(goalRate) + ". جرّب تحويل المبلغ أول الشهر.");
     if (t.left < 0) tips.push("المصروفات والادخار تجاوزت الدخل بـ " + money(-t.left) + " هذا الشهر.");
     return [header("ملخص الشهر", "summary", "الملخص"), monthBar(),
       el("div", { class: "kpis" },
