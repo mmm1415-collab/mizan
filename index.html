@@ -135,6 +135,44 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 .grip svg { width: 18px; height: 18px; }
 .rows > .dragging { position: relative; z-index: 5; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); outline: 1px solid var(--gold); border-radius: 8px; background: var(--panel-2); }
 body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbing; }
+.alerts { display: grid; gap: 8px; }
+.alert { display: block; border: 1px solid var(--gold); background: var(--gold-soft); color: var(--ink); border-radius: 8px; padding: 10px 14px; text-decoration: none; text-align: center; font-size: .95rem; }
+.copy-prev { display: grid; justify-items: center; gap: 6px; }
+.fab { position: fixed; z-index: 20; left: max(18px, env(safe-area-inset-left, 0px)); bottom: calc(22px + env(safe-area-inset-bottom, 0px)); width: 58px; height: 58px; border-radius: 50%; border: 0; background: var(--gold); color: var(--bg-deep); font-size: 2rem; line-height: 1; cursor: pointer; box-shadow: 0 6px 18px rgba(0, 0, 0, .45), 0 0 0 5px var(--gold-soft); display: grid; place-items: center; }
+.fab[hidden] { display: none; }
+body.has-fab .wrap { padding-bottom: 100px; }
+.quick { display: grid; gap: 10px; }
+.quick-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px; }
+.quick .amt { font-size: 1.15rem; }
+.quick-msg { margin: 0; text-align: center; font-size: .9rem; color: var(--muted); }
+.quick-msg.ok { color: var(--ok); } .quick-msg.err { color: var(--bad); }
+.period { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.period label { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); }
+.toggles { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.toggles button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); border-radius: 999px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: .9rem; }
+.toggles button i { width: 10px; height: 10px; border-radius: 50%; opacity: .35; }
+.toggles button[aria-pressed="true"] { color: var(--ink); border-color: var(--gold); }
+.toggles button[aria-pressed="true"] i { opacity: 1; }
+.seg { display: flex; justify-content: center; gap: 0; }
+.seg button { border: 1px solid var(--gold); background: transparent; color: var(--gold); padding: 6px 18px; cursor: pointer; font: inherit; }
+.seg button:first-child { border-radius: 0 6px 6px 0; } .seg button:last-child { border-radius: 6px 0 0 6px; }
+.seg button[aria-pressed="true"] { background: var(--gold); color: var(--bg-deep); }
+.chart-box { position: relative; }
+.chart-box svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart-box text { fill: var(--muted); font-size: 11px; font-family: var(--font-body); }
+.chart-box .grid-l { stroke: var(--line); stroke-width: 1; }
+.chart-box .base-l { stroke: var(--muted); stroke-width: 1; opacity: .6; }
+.chart-box .guide { stroke: var(--gold); stroke-width: 1; stroke-dasharray: 3 3; }
+.tip { position: absolute; top: 4px; z-index: 3; background: var(--bg-deep); border: 1px solid var(--gold); border-radius: 8px; padding: 8px 10px; font-size: .82rem; min-width: 150px; pointer-events: none; box-shadow: 0 6px 16px rgba(0, 0, 0, .4); }
+.tip b { display: block; color: var(--gold); margin-bottom: 4px; }
+.tip div { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+.tip i { width: 10px; height: 10px; border-radius: 50%; }
+.ctable-wrap { overflow-x: auto; }
+.ctable { width: 100%; border-collapse: collapse; font-size: .85rem; white-space: nowrap; }
+.ctable th, .ctable td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: center; }
+.ctable th { color: var(--gold); font-weight: 500; }
+.ctable tfoot td { color: var(--ink); font-weight: 700; }
+.ctable td:first-child, .ctable th:first-child { text-align: right; }
 .item-foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-size: .85rem; color: var(--muted); }
 
 .track { height: 8px; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
@@ -238,12 +276,12 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     debts: { list: [] },
     savings: { goals: [{ id: "g1", name: "صندوق الطوارئ", target: 0, saved: 0 }, { id: "g2", name: "الإجازة السنوية", target: 0, saved: 0 }] },
     investments: { list: [] },
-    zakat: { assets: items("z", ["النقد في الحسابات البنكية", "النقد في اليد", "الذهب والفضة (بقيمتها)", "الأسهم والصناديق بنية المتاجرة", "عروض التجارة", "ديون لك مرجوّة السداد"]), debtsDue: 0, goldPrice: 0, hawl: "", paid: 0 }
+    zakat: { assets: items("z", ["النقد في الحسابات البنكية", "النقد في اليد", "الذهب والفضة (بقيمتها)", "الأسهم والصناديق بنية المتاجرة", "عروض التجارة", "ديون لك مرجوّة السداد"]), debtsDue: 0, goldPrice: 0, hawl: "", hawlDay: "", hawlMonth: "", paid: 0 }
   };
   var UNSCHED_CATS = ["طارئ صحي", "صيانة مفاجئة", "مناسبة اجتماعية", "سفر", "رسوم ومخالفات", "أخرى"];
   var INVEST_TYPES = ["أسهم", "صناديق استثمارية", "صكوك وسندات", "عقار", "ذهب", "أخرى"];
   function emptyMonth() {
-    return { income: [{ id: "i1", name: "الراتب", amount: 0 }, { id: "i2", name: "دخل إضافي", amount: 0 }], actual: {}, unscheduled: [], savingDeposit: 0 };
+    return { income: [{ id: "i1", name: "الراتب", amount: 0 }, { id: "i2", name: "دخل إضافي", amount: 0 }], actual: {}, unscheduled: [], emergency: [], savingDeposit: 0 };
   }
 
   /* ---------- state + storage ---------- */
@@ -297,10 +335,47 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   function watchMonth() {
     if (monthUnsub) { monthUnsub(); monthUnsub = null; }
     var key = S.month, path = "months/" + key;
-    if (!S.db) { if (!S.months[key]) S.months[key] = lsGet(path) || emptyMonth(); return; }
+    if (!S.db) { if (!S.months[key]) S.months[key] = Object.assign(emptyMonth(), lsGet(path) || {}); return; }
     monthUnsub = S.db.doc(path).onSnapshot(function (snap) {
       if (snap.exists && !pending[path]) { S.months[key] = Object.assign(emptyMonth(), snap.data()); softRender(); }
     }, function () {});
+  }
+
+  /* read another month without switching to it (chart, copy from last month) */
+  var loadedMonths = {};
+  function loadMonth(key) {
+    if (S.months[key] || loadedMonths[key] || !S.db) {
+      if (!S.months[key] && !S.db) { var v = lsGet("months/" + key); if (v) S.months[key] = Object.assign(emptyMonth(), v); }
+      loadedMonths[key] = true;
+      return Promise.resolve(S.months[key] || null);
+    }
+    return new Promise(function (res) {
+      var un = null, done = false;
+      function fin() { if (done) return; done = true; loadedMonths[key] = true; if (un) un(); res(S.months[key] || null); }
+      un = S.db.doc("months/" + key).onSnapshot(function (snap) {
+        if (snap.exists && !S.months[key]) S.months[key] = Object.assign(emptyMonth(), snap.data());
+        fin();
+      }, fin);
+      if (done && un) un();
+      setTimeout(fin, 5000);
+    });
+  }
+  function realMonth() { var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1); }
+  function addMonths(key, n) { var p = key.split("-").map(Number), d = new Date(p[0], p[1] - 1 + n, 1); return d.getFullYear() + "-" + pad(d.getMonth() + 1); }
+  function monthDiff(a, b) { var x = a.split("-").map(Number), y = b.split("-").map(Number); return (y[0] - x[0]) * 12 + (y[1] - x[1]); }
+  /* each new month takes one installment off what is left of every debt */
+  function rollDebts() {
+    if (S.readOnly) return;
+    var nowKey = realMonth(), changed = false;
+    S.debts.list.forEach(function (d) {
+      if (!d.asOf) { d.asOf = nowKey; changed = true; return; }
+      var n = monthDiff(d.asOf, nowKey);
+      if (n > 0) {
+        if (+d.installment > 0 && +d.remaining > 0) d.remaining = Math.max(Math.round((+d.remaining - d.installment * n) * 100) / 100, 0);
+        d.asOf = nowKey; changed = true;
+      }
+    });
+    if (changed) save("settings/debts");
   }
 
   async function boot() {
@@ -311,6 +386,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     if (!db) {
       SETTINGS.forEach(function (k) { var v = lsGet("settings/" + k); if (v) S[k] = v; });
       S.security = lsGet("settings/security") || S.security; secLoaded = true;
+      rollDebts();
     } else {
       db.doc("settings/security").onSnapshot(function (snap) {
         if (!pending["settings/security"]) S.security = snap.exists ? Object.assign({ hash: "", salt: "" }, snap.data()) : { hash: "", salt: "" };
@@ -319,7 +395,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       SETTINGS.forEach(function (k) {
         var path = "settings/" + k;
         db.doc(path).onSnapshot(function (snap) {
-          if (snap.exists && !pending[path]) { S[k] = Object.assign(clone(DEFAULTS[k]), snap.data()); softRender(); }
+          if (snap.exists && !pending[path]) { S[k] = Object.assign(clone(DEFAULTS[k]), snap.data()); if (k === "debts") rollDebts(); softRender(); }
         }, function () {});
       });
     }
@@ -399,7 +475,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 
   /* ---------- quotes (moving band at the top of every page) ---------- */
   var QUOTES = {"money": [["المال خادم جيد، لكنه سيد فاسد.", "فرانسيس بيكون"], ["ليس المهم كم من المال تجني، بل كم من المال تدخر، وكيف يعمل هذا المال من أجلك.", "روبرت كيوساكي"], ["الثروة هي القدرة على تجربة الحياة بالكامل.", "هنري ديفيد ثورو"], ["الشخص الذي لا يعرف أين يذهب ماله، سيجد نفسه دائماً يتساءل أين ذهب.", ""], ["الفقر ليس نقصاً في المال، بل هو غياب العقلية المنتجة.", ""], ["إذا كنت تعمل من أجل المال، فأنت تعطي القوة لصاحب العمل. إذا كان المال يعمل من أجلك، فأنت من يمتلك القوة.", ""], ["الثروة الحقيقية هي ما تملكه عندما تفقد كل أموالك.", ""], ["الاستثمار في المعرفة يدفع دائماً أفضل الفوائد.", "بنجامين فرانكلين"], ["الأغنياء يستثمرون في الوقت، والفقراء يستثمرون في المال.", ""], ["النجاح المالي هو عبارة عن ٢٠٪ معرفة و٨٠٪ سلوك وانضباط.", "ديف رامزي"]], "saving": [["لا تدخر ما تبقى بعد الإنفاق، بل أنفق ما تبقى بعد الادخار.", "وارن بافيت"], ["كل درهم تدخره هو جندي يعمل في جيش ثروتك المستقبلية.", ""], ["الادخار هو فن العيش بأقل مما تكسب لتتمكن من العيش بأكثر مما كنت تتخيل لاحقاً.", ""], ["الحرمان المؤقت من الكماليات هو الثمن الذي تدفعه مقابل الحرية الأبدية.", ""], ["الرجل الذي يشتري ما لا يحتاجه، يسرق نفسه.", "مثل سويدي"], ["حتى أصغر قطرات الماء يمكنها ملء الحوض، وكذلك أصغر المدخرات.", ""], ["الادخار لا يعني البخل، بل يعني الذكاء في إدارة الموارد.", ""], ["الفرق بين الغني والفقير هو أن الغني يدخر ثم ينفق، والفقير ينفق ثم يحاول الادخار.", ""], ["كن حذراً من النفقات الصغيرة؛ فتسريب بسيط يمكن أن يغرق سفينة كبيرة.", "بنجامين فرانكلين"], ["الادخار هو تأجيل المتعة العابرة من أجل أمان دائم.", ""]], "debt": [["الدين هو الوحش الذي يأكل مستقبلك قبل أن يصل إليك.", ""], ["من يقترض، يبيع حريته.", "أندرو كارنيجي"], ["الديون هي العبيد الجدد في العصر الحديث.", ""], ["أفضل وقت لسداد ديونك كان بالأمس، ثاني أفضل وقت هو الآن.", ""], ["لا تشترِ شيئاً لتبهر أشخاصاً لا تحبهم بأموال لا تملكها.", ""], ["القروض تجعل الحياة تبدو سهلة في البداية، لكنها تجعلها مستحيلة في النهاية.", ""], ["العيش بدون ديون هو أرقى أنواع الرفاهية.", ""], ["الفائدة البنكية على الديون لا تنام، لا تمرض، ولا تأخذ عطلة؛ إنها تلتهمك بصمت.", ""], ["السعادة لا تُشترى ببطاقة ائتمان.", ""], ["أن تنام جائعاً أفضل من أن تستيقظ مديوناً.", "مثل عربي قديم"]], "invest": [["السوق مصمم لنقل الأموال من الشخص غير الصبور إلى الشخص الصبور.", "وارن بافيت"], ["أفضل وقت لزراعة شجرة كان منذ ٢٠ عاماً، ثاني أفضل وقت هو الآن.", "مثل صيني"], ["لا تضع كل بيضك في سلة واحدة.", ""], ["الاستثمار هو عملية تحويل الأموال من شخص يريد المتعة الفورية إلى شخص يريد الأمان المستقبلي.", ""], ["الثروة لا تأتي من الدخل العالي، بل من الأصول التي تدر دخلاً.", ""], ["الخطر الحقيقي هو عدم المخاطرة بأي شيء.", ""], ["المستثمر الذكي هو من يشتري عندما يخاف الجميع، ويبيع عندما يطمع الجميع.", ""], ["المال هو بذرة، إذا زرعتها في أرض الاستثمار أثمرت غابة من الثروة.", ""], ["الفائدة المركبة هي الأعجوبة الثامنة في العالم.", "ألبرت أينشتاين"], ["الاستثمار الناجح يتطلب وقتاً وانضباطاً وصبراً.", ""]], "life": [["المال لا يغير الناس، بل يكشف حقيقتهم فقط.", ""], ["أن تكون غنياً هو أن تملك المال، أما أن تكون ثرياً فهو أن تملك الوقت.", ""], ["الفقير ليس من لا يملك قرشاً، بل من لا يملك حلماً.", ""], ["المال يعطيك خيارات، والخيارات تعطيك الحرية.", ""], ["اجعل هدفك هو الاستقلال المالي، وليس مجرد جمع الأرقام.", ""], ["لا تدع كسب العيش ينسيك بناء حياة.", ""], ["العطاء هو جزء من الثقافة المالية الناجحة؛ المال الذي يخرج بصدق يعود ببركة.", ""], ["التخطيط المالي هو الفرق بين الحلم والواقع.", ""], ["كن سيد مالك، ولا تسمح له بأن يصبح سيدك.", ""], ["الرحلة نحو الثراء تبدأ بخطوة واحدة: قرار بأنك تستحق حياة أفضل.", ""]]};
-  var QUOTE_FOR = { savings: ["saving"], debts: ["debt"], invest: ["invest"], zakat: ["life"], expenses: ["saving", "money"], actual: ["money"], "act-fixed": ["money"], "act-variable": ["money"], unscheduled: ["saving"], income: ["money"], summary: ["money", "life"], overview: ["money", "life"] };
+  var QUOTE_FOR = { savings: ["saving"], debts: ["debt"], invest: ["invest"], zakat: ["life"], expenses: ["saving", "money"], actual: ["money"], "act-fixed": ["money"], "act-variable": ["money"], unscheduled: ["saving"], emergency: ["saving"], chart: ["money", "invest"], income: ["money"], summary: ["money", "life"], overview: ["money", "life"] };
   var lastQuote = "";
   function showQuote(view) {
     var groups = QUOTE_FOR[view] || ["money", "life"], pool = [];
@@ -422,7 +498,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     quoteAnim.onfinish = function () { showQuote(current || view); };
   }
   var quoteResize;
-  window.addEventListener("resize", function () { clearTimeout(quoteResize); quoteResize = setTimeout(function () { if (quoteAnim) runQuote(current); }, 300); });
+  window.addEventListener("resize", function () { clearTimeout(quoteResize); quoteResize = setTimeout(function () { if (quoteAnim) runQuote(current); if (current === "chart") render(); }, 300); });
 
   /* ---------- calculations ---------- */
   function sum(arr, f) { return arr.reduce(function (a, x) { var v = +f(x); return a + (isFinite(v) ? v : 0); }, 0); }
@@ -437,10 +513,11 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       actFixed: act(S.estimates.fixed),
       actVar: act(S.estimates.variable),
       unsched: sum(m.unscheduled, amt),
+      emerg: sum(m.emergency || [], amt),
       debts: sum(S.debts.list, function (d) { return (+d.remaining || 0) > 0 ? d.installment : 0; }),
       saving: +m.savingDeposit || 0
     };
-    t.spent = t.actFixed + t.actVar + t.unsched + t.debts;
+    t.spent = t.actFixed + t.actVar + t.unsched + t.emerg + t.debts;
     t.left = t.income - t.spent - t.saving;
     return t;
   }
@@ -474,6 +551,11 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   function select(id, options, value, onval, label) {
     return el("select", { id: id, "aria-label": label, disabled: S.readOnly ? "" : null, onchange: function (e) { onval(e.target.value); } },
       options.map(function (c) { var o = el("option", { value: c, text: c }); if (c === value) o.selected = true; return o; }));
+  }
+  function numSelect(id, count, value, onval, label, name) {
+    var opts = [el("option", { value: "", text: "—" })];
+    for (var i = 1; i <= count; i++) { var o = el("option", { value: String(i), text: name(i) }); if (String(value) === String(i)) o.selected = true; opts.push(o); }
+    return el("select", { id: id, "aria-label": label, disabled: S.readOnly ? "" : null, onchange: function (e) { onval(e.target.value); } }, opts);
   }
   function delBtn(label, fn) { return S.readOnly ? el("span") : el("button", { class: "x", type: "button", "aria-label": "حذف " + (label || "البند"), text: "×", onclick: fn }); }
   function addBtn(text, list, make, path, focusPrefix) {
@@ -557,6 +639,65 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     return null;
   }
 
+  /* reminders shown at the top of the sections page: each returns { text, go } or null */
+  var ALERTS = [];
+  function daysText(n) { return n === 1 ? "يوم واحد" : n === 2 ? "يومين" : n <= 10 ? fmt.format(n) + " أيام" : fmt.format(n) + " يومًا"; }
+  var HIJRI_MONTHS = ["محرم", "صفر", "ربيع الأول", "ربيع الآخر", "جمادى الأولى", "جمادى الآخرة", "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة"];
+  var hijriParts = (function () {
+    try {
+      var f = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura-nu-latn", { day: "numeric", month: "numeric" });
+      return function (d) { var o = {}; f.formatToParts(d).forEach(function (p) { o[p.type] = +p.value; }); return o; };
+    } catch (e) { return null; }
+  })();
+  /* next time the Hijri day/month of the zakat year comes round, counted in days from today */
+  function nextHawl() {
+    var D = +S.zakat.hawlDay, M = +S.zakat.hawlMonth;
+    if (!hijriParts || !D || !M) return null;
+    var d = new Date(); d.setHours(12, 0, 0, 0);
+    for (var i = 0; i < 390; i++) {
+      var h = hijriParts(d);
+      if (h.month === M && (h.day === D || (D === 30 && h.day === 29 && hijriParts(new Date(d.getTime() + 864e5)).month !== M))) return { days: i, date: new Date(d) };
+      d.setDate(d.getDate() + 1);
+    }
+    return null;
+  }
+  ALERTS.push(function () {
+    var h = nextHawl();
+    if (!h || h.days > 30) return null;
+    return { go: "zakat", text: h.days === 0 ? "اليوم موعد زكاة مالك. احسبها من قسم الزكاة." : "موعد زكاة مالك بعد " + daysText(h.days) + "." };
+  });
+
+  var copyNotes = {};
+  /* fill this month from the one before: only empty amounts are filled, nothing is overwritten */
+  function copyPrevBtn(what) {
+    if (S.readOnly) return null;
+    var note = copyNotes[what] || ""; copyNotes[what] = "";
+    return el("div", { class: "copy-prev" },
+      el("button", { class: "add", type: "button", text: "نسخ من الشهر السابق", onclick: function () {
+        var key = S.month, path = "months/" + key;
+        loadMonth(addMonths(key, -1)).then(function (pm) {
+          if (S.month !== key) return;
+          var m = monthDoc(key), n = 0;
+          if (pm && what === "income") {
+            pm.income.forEach(function (it) {
+              var cur = m.income.filter(function (x) { return x.name === it.name; })[0];
+              if (!cur) { if (+it.amount) { m.income.push({ id: uid(), name: it.name, amount: it.amount }); n++; } }
+              else if (!+cur.amount && +it.amount) { cur.amount = it.amount; n++; }
+            });
+          } else if (pm) {
+            S.estimates[what].forEach(function (it) {
+              var v = +(pm.actual[it.id] || 0);
+              if (v && !+(m.actual[it.id] || 0)) { m.actual[it.id] = v; n++; }
+            });
+          }
+          copyNotes[what] = n ? "نُسخ " + (n === 1 ? "مبلغ واحد" : n === 2 ? "مبلغان" : fmt.format(n) + (n <= 10 ? " مبالغ" : " مبلغًا")) + " من الشهر السابق، ويمكنك تعديلها." : pm ? "لا توجد مبالغ جديدة للنسخ؛ الخانات الممتلئة لا تتغير." : "لا توجد بيانات في الشهر السابق.";
+          if (n) save(path);
+          render();
+        });
+      } }),
+      note ? el("p", { class: "hint", text: note }) : null);
+  }
+
   /* ---------- views ---------- */
   var VIEWS = {}, current = "home", totalFns = {};
 
@@ -565,15 +706,18 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var head = header("الأقسام", "home", "الرئيسية");
     head.classList.add("has-lock");
     head.append(el("a", { class: "lockbtn", href: "#pin", "aria-label": "الرقم السري", title: "الرقم السري" }, svg(LOCK_ICON)));
+    var alerts = ALERTS.map(function (f) { return f(); }).filter(Boolean);
     return [head,
+      alerts.length ? el("div", { class: "alerts" }, alerts.map(function (a) { return el("a", { class: "alert", href: "#" + a.go, text: a.text }); })) : null,
       el("div", { class: "grid" },
         tile("income", "الدخل والموارد", "الراتب وأي دخل أو مورد إضافي", money(t.income)),
-        tile("expenses", "المصروفات", "الفعلية · غير المجدولة", money(t.actFixed + t.actVar + t.unsched)),
+        tile("expenses", "المصروفات", "الفعلية · غير المجدولة · الطارئة", money(t.actFixed + t.actVar + t.unsched + t.emerg)),
         tile("debts", "الديون والالتزامات", "الأقساط الشهرية", money(t.debts)),
         tile("savings", "الادخار", "إيداع الشهر وأهداف الادخار", money(t.saving)),
         tile("invest", "الاستثمار", "المحفظة والربح والخسارة", money(sum(S.investments.list, function (x) { return x.current; }))),
         tile("zakat", "الزكاة", "الأموال الزكوية والنصاب والواجب", null),
         tile("summary", "الملخص المالي", "ملخص الشهر", null),
+        tile("chart", "الرسم البياني للميزانية", "مقارنة الأشهر لفترة تختارها", null),
         tile("backup", "النسخة الاحتياطية", "تصدير البيانات واستيرادها", null)),
       notice()];
   };
@@ -583,7 +727,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     return [header("المصروفات", "sections", "الأقسام"), monthBar(),
       el("div", { class: "grid" },
         tile("actual", "المصروفات الفعلية", "الثابتة · غير الثابتة", money(t.actFixed + t.actVar)),
-        tile("unscheduled", "المصروفات غير المجدولة", "مصروفات طارئة خارج الخطة", money(t.unsched)))];
+        tile("unscheduled", "المصروفات غير المجدولة", "مصروفات خارج الخطة", money(t.unsched)),
+        tile("emergency", "المصروفات الطارئة", "تسجيل سريع لما تصرفه فجأة", money(t.emerg)))];
   };
 
   VIEWS.actual = function () {
@@ -608,6 +753,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           })) : el("p", { class: "empty", text: "لا توجد بنود بعد." }),
           addBtn("إضافة بند", list, function () { return { name: "", amount: 0 }; }, itemsPath, "an-"),
           totalRow("مجموع الشهر", "act")),
+        copyPrevBtn(kind),
         el("p", { class: "hint", text: "البنود نفسها تبقى لكل الأشهر، والمبالغ تُسجَّل لكل شهر على حدة." })];
     };
   }
@@ -638,7 +784,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     totalFns.dInst = function () { return money(sum(list, function (d) { return (+d.remaining || 0) > 0 ? d.installment : 0; })); };
     totalFns.dRem = function () { return money(sum(list, function (d) { return d.remaining; })); };
     return [header("الديون والالتزامات", "sections", "الأقسام"),
-      el("p", { class: "hint", text: "القروض والأقساط والالتزامات الشهرية. يُحسب القسط ضمن مصروفات كل شهر في الملخص المالي." }),
+      el("p", { class: "hint", text: "القروض والأقساط والالتزامات الشهرية. يُحسب القسط ضمن مصروفات كل شهر، ويُخصم من المبلغ المتبقي تلقائيًا في بداية كل شهر." }),
       el("div", { class: "card" },
         list.length ? sortable(list, path, list.map(function (d, i) {
           var foot = el("div", { class: "item-foot" });
@@ -654,11 +800,11 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
             el("div", { class: "subform" },
               el("label", null, "الجهة", textInput("dc-" + d.id, d.creditor, function (v) { d.creditor = v; save(path); }, "الجهة", "البنك أو الشخص")),
               el("label", null, "يوم السداد", textInput("dd-" + d.id, d.due, function (v) { d.due = v; save(path); }, "يوم السداد", "مثال: ٢٧ من كل شهر")),
-              el("label", null, "القسط الشهري", amountInput("di-" + d.id, d.installment, function (v) { d.installment = v; upd(); save(path); })),
-              el("label", null, "المبلغ المتبقي", amountInput("dr-" + d.id, d.remaining, function (v) { d.remaining = v; upd(); save(path); }))),
+              el("label", null, "القسط الشهري", amountInput("di-" + d.id, d.installment, function (v) { d.installment = v; d.asOf = realMonth(); upd(); save(path); })),
+              el("label", null, "المبلغ المتبقي", amountInput("dr-" + d.id, d.remaining, function (v) { d.remaining = v; d.asOf = realMonth(); upd(); save(path); }))),
             foot);
         })) : el("p", { class: "empty", text: "لا توجد ديون أو التزامات مسجلة." }),
-        addBtn("إضافة التزام", list, function () { return { name: "", creditor: "", installment: 0, remaining: 0, due: "" }; }, path, "dn-"),
+        addBtn("إضافة التزام", list, function () { return { name: "", creditor: "", installment: 0, remaining: 0, due: "", asOf: realMonth() }; }, path, "dn-"),
         totalRow("مجموع الأقساط الشهرية", "dInst"), totalRow("مجموع المتبقي", "dRem"))];
   };
 
@@ -763,9 +909,17 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         el("div", { class: "subform" },
           el("label", null, "الديون الحالّة عليك", amountInput("zd", z.debtsDue, function (v) { z.debtsDue = v; save(path); }, "الديون الحالّة عليك")),
           el("label", null, "سعر جرام الذهب عيار ٢٤", amountInput("zg", z.goldPrice, function (v) { z.goldPrice = v; save(path); }, "سعر جرام الذهب")),
-          el("label", null, "تاريخ حولان الحول", textInput("zh", z.hawl, function (v) { z.hawl = v; save(path); }, "تاريخ حولان الحول", "مثال: ١ رمضان ١٤٤٨")),
+          el("label", null, "يوم حولان الحول (هجري)", numSelect("zhd", 30, z.hawlDay, function (v) { z.hawlDay = v; save(path); render(); }, "يوم حولان الحول", function (i) { return fmt.format(i); })),
+          el("label", null, "شهر حولان الحول", numSelect("zhm", 12, z.hawlMonth, function (v) { z.hawlMonth = v; save(path); render(); }, "شهر حولان الحول", function (i) { return HIJRI_MONTHS[i - 1]; })),
           el("label", null, "ما أخرجته من الزكاة", amountInput("zp", z.paid, function (v) { z.paid = v; save(path); }, "ما أخرجته من الزكاة"))),
-        totalRow("صافي المال بعد الديون", "zN"), totalRow("النصاب", "zNisab"), totalRow("الزكاة الواجبة", "zDue"), totalRow("المتبقي إخراجه", "zLeft")),
+        totalRow("صافي المال بعد الديون", "zN"), totalRow("النصاب", "zNisab"), totalRow("الزكاة الواجبة", "zDue"), totalRow("المتبقي إخراجه", "zLeft"),
+        (function () {
+          var h = nextHawl();
+          if (!h) return el("p", { class: "hint", text: "اختر يوم الحول وشهره ليذكّرك التطبيق قبل الموعد بثلاثين يومًا." });
+          var g = new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { day: "numeric", month: "long", year: "numeric" }).format(h.date);
+          var hj = new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura", { day: "numeric", month: "long", year: "numeric" }).format(h.date);
+          return el("div", { class: "total" }, el("span", { text: "الموعد القادم" }), el("b", { class: "num", text: h.days === 0 ? "اليوم" : hj + " (" + g + ")، بعد " + daysText(h.days) }));
+        })()),
       el("p", { class: "hint", text: "الحساب تقديري، وفي الحالات الخاصة يُرجع إلى أهل العلم." })];
   };
 
@@ -825,7 +979,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
             delBtn(it.name, remover(list, i, path)));
         })) : el("p", { class: "empty", text: "لا يوجد دخل مسجل لهذا الشهر." }),
         addBtn("إضافة مصدر دخل", list, function () { return { name: "", amount: 0 }; }, path, "in-"),
-        totalRow("مجموع دخل الشهر", "inc"))];
+        totalRow("مجموع دخل الشهر", "inc")),
+      copyPrevBtn("income")];
   };
 
   VIEWS.overview = function () {
@@ -834,6 +989,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       { k: "مصروفات ثابتة", v: t.actFixed, c: "#6f9ee8" },
       { k: "مصروفات غير ثابتة", v: t.actVar, c: "#b58be0" },
       { k: "مصروفات غير مجدولة", v: t.unsched, c: "#e58272" },
+      { k: "مصروفات طارئة", v: t.emerg, c: "#d55181" },
       { k: "أقساط الديون", v: t.debts, c: "#e3b552" },
       { k: "الادخار", v: t.saving, c: "#5cc29a" },
       { k: "المتبقي", v: Math.max(t.left, 0), c: "#4a6795" }
@@ -862,6 +1018,191 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         tips.length ? el("ul", { class: "tips" }, tips.map(function (x) { return el("li", { text: x }); }))
           : el("p", { class: "hint", text: t.income ? "لا ملاحظات هذا الشهر." : "أدخل دخل الشهر والمصروفات الفعلية لتظهر هنا الملاحظات." }))];
   };
+
+  /* ---------- emergency expenses: quick entry ---------- */
+  var quickMsg = null;
+  var fmtDay = new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { day: "numeric", month: "long" });
+  function todayISO() { var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  VIEWS.emergency = function () {
+    var m = monthDoc(), path = "months/" + S.month;
+    if (!m.emergency) m.emergency = [];
+    var list = m.emergency;
+    totalFns.em = function () { return money(sum(list, amt)); };
+    var msg = el("p", { class: "quick-msg" + (quickMsg ? " " + quickMsg.cls : ""), "aria-live": "polite", text: quickMsg ? quickMsg.text : "" });
+    quickMsg = null;
+    var form = S.readOnly ? null : el("form", { class: "card quick", onsubmit: function (e) {
+      e.preventDefault();
+      var a = parseAmount($("qa").value);
+      if (!(a > 0)) { msg.className = "quick-msg err"; msg.textContent = "اكتب المبلغ أولًا."; $("qa").focus(); return; }
+      var name = $("qn").value.trim();
+      list.unshift({ id: uid(), name: name, amount: a, date: todayISO() });
+      save(path);
+      quickMsg = { cls: "ok", text: "سُجّل " + money(a) + (name ? " على «" + name + "»" : "") + "." };
+      render();
+      var q = $("qa"); if (q) q.focus();
+    } },
+      el("h3", { text: "تسجيل سريع" }),
+      el("div", { class: "quick-row" },
+        el("input", { id: "qa", class: "amt", inputmode: "decimal", autocomplete: "off", placeholder: "المبلغ", "aria-label": "المبلغ" }),
+        el("input", { id: "qn", autocomplete: "off", maxlength: "60", placeholder: "على ماذا؟ (اختياري)", "aria-label": "وصف المصروف" })),
+      el("button", { class: "enter small", type: "submit", text: "إضافة" }),
+      msg);
+    return [header("المصروفات الطارئة", "expenses", "المصروفات"), monthBar(),
+      el("p", { class: "hint", text: "للمصروفات المفاجئة اليومية. سجّلها فور صرفها من زر + الذهبي في أي صفحة." }),
+      form,
+      el("div", { class: "card" },
+        list.length ? sortable(list, path, list.map(function (it, i) {
+          return el("div", { class: "row" },
+            el("div", { class: "lbl" },
+              textInput("en-" + it.id, it.name, function (v) { it.name = v; save(path); }, "وصف المصروف", "بلا وصف"),
+              el("span", { class: "sub num", text: it.date ? fmtDay.format(new Date(it.date + "T12:00:00")) : "" })),
+            amountInput("ea-" + it.id, it.amount, function (v) { it.amount = v; save(path); }, "مبلغ " + (it.name || "المصروف")),
+            delBtn(it.name, remover(list, i, path)));
+        })) : el("p", { class: "empty", text: "لا توجد مصروفات طارئة في هذا الشهر." }),
+        totalRow("مجموع الشهر", "em"))];
+  };
+  /* floating + on every inner page: jumps to this month's quick entry */
+  function syncFab(v) {
+    var b = $("fab");
+    if (!b) {
+      b = el("button", { id: "fab", class: "fab", type: "button", "aria-label": "تسجيل مصروف طارئ", title: "تسجيل مصروف طارئ", text: "+", onclick: function () {
+        if (S.month !== realMonth()) { S.month = realMonth(); watchMonth(); }
+        go("emergency");
+        var q = $("qa"); if (q) q.focus();
+      } });
+      document.body.append(b);
+    }
+    var show = v !== "home" && v !== "emergency" && v !== "pin" && !S.readOnly;
+    b.hidden = !show;
+    document.body.classList.toggle("has-fab", show);
+  }
+
+  /* ---------- budget chart over a chosen period ---------- */
+  var SERIES = [
+    { k: "income", n: "الدخل", c: "#3987e5", f: function (t) { return t.income; } },
+    { k: "exp", n: "المصروفات الفعلية", c: "#d95926", f: function (t) { return t.actFixed + t.actVar; } },
+    { k: "unsched", n: "غير المجدولة", c: "#199e70", f: function (t) { return t.unsched; } },
+    { k: "emerg", n: "الطارئة", c: "#c98500", f: function (t) { return t.emerg; } },
+    { k: "debts", n: "أقساط الديون", c: "#d55181", f: function (t) { return t.debts; } },
+    { k: "saving", n: "الادخار", c: "#008300", f: function (t) { return t.saving; } },
+    { k: "left", n: "المتبقي", c: "#9085e9", f: function (t) { return t.left; } }
+  ];
+  var CH = Object.assign({ from: addMonths(realMonth(), -5), to: realMonth(), on: { income: 1, exp: 1, saving: 1 }, type: "line" }, lsGet("ui/chart") || {});
+  function chartPrefs() { lsSet("ui/chart", CH); render(); }
+  var fmtShort = new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { month: "short" });
+  var fmtCompact = new Intl.NumberFormat("ar-SA", { notation: "compact", maximumFractionDigits: 1 });
+  function monthName(key, withYear) { var p = key.split("-").map(Number), d = new Date(p[0], p[1] - 1, 1); return withYear ? fmtMonth.format(d) : fmtShort.format(d); }
+  function niceStep(span, n) { var raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw || 1))), r = raw / mag; return (r <= 1 ? 1 : r <= 2 ? 2 : r <= 2.5 ? 2.5 : r <= 5 ? 5 : 10) * mag; }
+  VIEWS.chart = function () {
+    var a = CH.from, b = CH.to;
+    if (monthDiff(a, b) < 0) { var x = a; a = b; b = x; }
+    var keys = []; for (var k = a; monthDiff(k, b) >= 0 && keys.length < 60; k = addMonths(k, 1)) keys.push(k);
+    var missing = keys.filter(function (k) { return !loadedMonths[k] && !S.months[k]; });
+    var opts = []; for (var i = -36; i <= 12; i++) opts.push(addMonths(realMonth(), i));
+    [CH.from, CH.to].forEach(function (k) { if (opts.indexOf(k) < 0) opts.push(k); }); opts.sort();
+    function monthSel(id, val, set) {
+      return el("select", { id: id, onchange: function (e) { CH[set] = e.target.value; chartPrefs(); } },
+        opts.map(function (k) { var o = el("option", { value: k, text: monthName(k, true) }); if (k === val) o.selected = true; return o; }));
+    }
+    var controls = [
+      el("div", { class: "card" },
+        el("h3", { text: "الفترة" }),
+        el("div", { class: "period" },
+          el("label", null, "من", monthSel("chFrom", CH.from, "from")),
+          el("label", null, "إلى", monthSel("chTo", CH.to, "to")))),
+      el("div", { class: "card" },
+        el("h3", { text: "الأقسام" }),
+        el("div", { class: "toggles" }, SERIES.map(function (sr) {
+          return el("button", { type: "button", "aria-pressed": CH.on[sr.k] ? "true" : "false", onclick: function () { if (CH.on[sr.k]) delete CH.on[sr.k]; else CH.on[sr.k] = 1; chartPrefs(); } },
+            el("i", { style: "background:" + sr.c }), sr.n);
+        })),
+        el("div", { class: "seg", role: "group", "aria-label": "نوع الرسم" },
+          el("button", { type: "button", "aria-pressed": CH.type === "line" ? "true" : "false", text: "خطوط", onclick: function () { CH.type = "line"; chartPrefs(); } }),
+          el("button", { type: "button", "aria-pressed": CH.type === "bar" ? "true" : "false", text: "أعمدة", onclick: function () { CH.type = "bar"; chartPrefs(); } })))
+    ];
+    var head = header("الرسم البياني للميزانية", "sections", "الأقسام");
+    if (missing.length) {
+      Promise.all(missing.map(loadMonth)).then(function () { if (current === "chart") render(); });
+      return [head].concat(controls, el("div", { class: "card" }, el("p", { class: "empty", text: "جارٍ تجهيز الرسم…" })));
+    }
+    var series = SERIES.filter(function (sr) { return CH.on[sr.k]; });
+    var rows = keys.map(function (k) { var t = totals(k); return series.map(function (sr) { return Math.round(sr.f(t) * 100) / 100; }); });
+    if (!series.length) return [head].concat(controls, el("div", { class: "card" }, el("p", { class: "empty", text: "اختر قسمًا واحدًا على الأقل." })));
+    return [head].concat(controls,
+      el("div", { class: "card" }, drawChart(keys, series, rows)),
+      el("div", { class: "card" },
+        el("h3", { text: "الأرقام" }),
+        el("div", { class: "ctable-wrap" }, el("table", { class: "ctable" },
+          el("thead", null, el("tr", null, el("th", { text: "الشهر" }), series.map(function (sr) { return el("th", { text: sr.n }); }))),
+          el("tbody", null, keys.map(function (k, r) { return el("tr", null, el("td", { text: monthName(k, true) }), rows[r].map(function (v) { return el("td", { class: "num", text: fmt.format(v) }); })); })),
+          el("tfoot", null,
+            el("tr", null, el("td", { text: "المجموع" }), series.map(function (sr, c) { return el("td", { class: "num", text: fmt.format(sum(rows, function (r) { return r[c]; })) }); })),
+            el("tr", null, el("td", { text: "المتوسط الشهري" }), series.map(function (sr, c) { return el("td", { class: "num", text: fmt.format(Math.round(sum(rows, function (r) { return r[c]; }) / keys.length)) }); }))))),
+        el("p", { class: "hint", text: "المبالغ بالريال. أقساط الديون محسوبة من قائمة الديون الحالية." })));
+  };
+  function drawChart(keys, series, rows) {
+    var NS = "http://www.w3.org/2000/svg";
+    function sv(tag, attrs) { var n = document.createElementNS(NS, tag); for (var a in attrs) n.setAttribute(a, attrs[a]); return n; }
+    var W = Math.max(Math.min(window.innerWidth, 760) - 66, 260), H = 260, padR = 52, padL = 8, padT = 12, padB = 30;
+    var plotW = W - padR - padL, plotH = H - padT - padB;
+    var all = [].concat.apply([0], rows), lo = Math.min.apply(null, all), hi = Math.max.apply(null, all);
+    if (hi === lo) hi = lo + 1000;
+    var step = niceStep(hi - lo, 4); lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    var y = function (v) { return padT + plotH - (v - lo) / (hi - lo) * plotH; };
+    var n = keys.length, colW = plotW / n;
+    /* time runs right to left, like the page */
+    var cx = function (i) { return W - padR - colW * (i + .5); };
+    var svgEl = sv("svg", { viewBox: "0 0 " + W + " " + H, direction: "ltr", role: "img", "aria-label": "رسم بياني للأقسام المختارة من " + monthName(keys[0], true) + " إلى " + monthName(keys[n - 1], true) });
+    for (var v = lo; v <= hi + step / 2; v += step) {
+      svgEl.append(sv("line", { x1: padL, x2: W - padR, y1: y(v), y2: y(v), class: v === 0 ? "base-l" : "grid-l" }));
+      var tx = sv("text", { x: W - 2, y: y(v) + 4, "text-anchor": "end" }); tx.textContent = fmtCompact.format(v); svgEl.append(tx);
+    }
+    var every = Math.ceil(n / Math.max(Math.floor(plotW / 54), 1)), years = keys[0].slice(0, 4) !== keys[n - 1].slice(0, 4);
+    keys.forEach(function (k, i) {
+      if (i % every) return;
+      var t = sv("text", { x: cx(i), y: H - 10, "text-anchor": "middle" });
+      t.textContent = monthName(k) + (years && (i === 0 || k.slice(5) === "01") ? " " + fmt.format(+k.slice(0, 4)).replace(/٬/g, "") : "");
+      svgEl.append(t);
+    });
+    var guide = sv("line", { x1: 0, x2: 0, y1: padT, y2: padT + plotH, class: "guide", visibility: "hidden" });
+    svgEl.append(guide);
+    if (CH.type === "bar") {
+      var gw = Math.min(colW * .78, series.length * 22), bw = Math.max(gw / series.length - 2, 2);
+      keys.forEach(function (k, i) {
+        series.forEach(function (sr, j) {
+          var val = rows[i][j]; if (!val) return;
+          var x0 = cx(i) + gw / 2 - (j + 1) * (bw + 2) + 1, y0 = y(0), y1 = y(val), r = Math.min(4, bw / 2, Math.abs(y0 - y1));
+          var up = y1 < y0, d = up
+            ? "M" + x0 + "," + y0 + "V" + (y1 + r) + "Q" + x0 + "," + y1 + " " + (x0 + r) + "," + y1 + "H" + (x0 + bw - r) + "Q" + (x0 + bw) + "," + y1 + " " + (x0 + bw) + "," + (y1 + r) + "V" + y0 + "Z"
+            : "M" + x0 + "," + y0 + "V" + (y1 - r) + "Q" + x0 + "," + y1 + " " + (x0 + r) + "," + y1 + "H" + (x0 + bw - r) + "Q" + (x0 + bw) + "," + y1 + " " + (x0 + bw) + "," + (y1 - r) + "V" + y0 + "Z";
+          svgEl.append(sv("path", { d: d, fill: sr.c }));
+        });
+      });
+    } else {
+      series.forEach(function (sr, j) {
+        if (n > 1) svgEl.append(sv("polyline", { points: keys.map(function (k, i) { return cx(i) + "," + y(rows[i][j]); }).join(" "), fill: "none", stroke: sr.c, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+        keys.forEach(function (k, i) { svgEl.append(sv("circle", { cx: cx(i), cy: y(rows[i][j]), r: 4, fill: sr.c, stroke: "#10274b", "stroke-width": 2 })); });
+      });
+    }
+    var tip = el("div", { class: "tip", hidden: "" }), box = el("div", { class: "chart-box" }, svgEl, tip), shown = -1;
+    function show(i) {
+      if (i === shown) return; shown = i;
+      guide.setAttribute("x1", cx(i)); guide.setAttribute("x2", cx(i)); guide.setAttribute("visibility", "visible");
+      tip.replaceChildren.apply(tip, [el("b", { text: monthName(keys[i], true) })].concat(series.map(function (sr, j) { return el("div", null, el("i", { style: "background:" + sr.c }), el("span", { text: sr.n }), el("span", { class: "num", text: money(rows[i][j]) })); })));
+      tip.hidden = false;
+      var px = cx(i) / W * box.clientWidth, tw = tip.offsetWidth;
+      tip.style.left = Math.max(0, Math.min(box.clientWidth - tw, px < box.clientWidth / 2 ? px + 12 : px - tw - 12)) + "px";
+    }
+    function hide() { shown = -1; tip.hidden = true; guide.setAttribute("visibility", "hidden"); }
+    keys.forEach(function (k, i) {
+      var hit = sv("rect", { x: cx(i) - colW / 2, y: padT, width: colW, height: plotH + padB, fill: "transparent" });
+      hit.addEventListener("pointerenter", function () { show(i); });
+      hit.addEventListener("click", function () { show(i); });
+      svgEl.append(hit);
+    });
+    svgEl.addEventListener("pointerleave", function (e) { if (e.pointerType === "mouse") hide(); });
+    return box;
+  }
 
   /* ---------- backup (offline app keeps data on this device only) ---------- */
   function allData() {
@@ -912,6 +1253,14 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         el("input", { id: "importFile", type: "file", accept: ".json,application/json", hidden: "", onchange: pick }),
         msg, confirmBox)];
   };
+  /* remind to export when there is data and the last backup is missing or over a month old */
+  ALERTS.unshift(function () {
+    var last = lsGet("lastBackup"), hasData = Object.keys(allData()).some(function (k) { return k.indexOf("months/") === 0; });
+    if (!hasData) return null;
+    if (!last) return { go: "backup", text: "لم تصدّر نسخة احتياطية بعد. احفظ نسخة الآن حتى لا تضيع بياناتك." };
+    var days = Math.floor((Date.now() - new Date(last).getTime()) / 864e5);
+    return days >= 30 ? { go: "backup", text: "مضى " + daysText(days) + " على آخر نسخة احتياطية. صدّر نسخة جديدة الآن." } : null;
+  });
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
   if ("serviceWorker" in navigator && location.protocol === "https:") { try { navigator.serviceWorker.register("sw.js"); } catch (e) {} }
 
@@ -929,6 +1278,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var changed = v !== current;
     if (changed || !$("quoteText").textContent) showQuote(v);
     current = v;
+    syncFab(v);
     $("home").hidden = v !== "home";
     $("view").hidden = v === "home";
     if (v === "home") renderGate();
@@ -940,7 +1290,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     if (changed) window.scrollTo(0, 0);
   }
   function go(v) { location.hash = v; render(); }
-  window.addEventListener("hashchange", render);
+  window.addEventListener("hashchange", function () { if (location.hash.slice(1) !== current) render(); });
   render();
   boot();
 })();
