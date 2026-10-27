@@ -267,7 +267,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         <div class="rule" aria-hidden="true"><i></i></div>
         <h1>ميزانيتي</h1>
         <div class="rule" aria-hidden="true"><i></i></div>
-        <p class="ayah">﴿يَا أَيُّهَا الَّذِينَ آمَنُوا إِذَا تَدَايَنتُم بِدَيْنٍ إِلَىٰ أَجَلٍ مُّسَمًّى فَاكْتُبُوهُ﴾<span>[البقرة: ٢٨٢]</span></p>
+        <p class="ayah">﴿يَا أَيُّهَا الَّذِينَ آمَنُوا إِذَا تَدَايَنتُم بِدَيْنٍ إِلَىٰ أَجَلٍ مُّسَمًّى فَاكْتُبُوهُ﴾<span>[البقرة: 282]</span></p>
       </div>
       <div class="gate" id="gate"></div>
     </section>
@@ -280,9 +280,9 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
-  var fmt = new Intl.NumberFormat("ar-SA", { maximumFractionDigits: 2 });
-  var fmtPct = new Intl.NumberFormat("ar-SA", { style: "percent", maximumFractionDigits: 0 });
-  var fmtMonth = new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { month: "long", year: "numeric" });
+  var fmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { maximumFractionDigits: 2 });
+  var fmtPct = new Intl.NumberFormat("ar-SA-u-nu-latn", { style: "percent", maximumFractionDigits: 0 });
+  var fmtMonth = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", { month: "long", year: "numeric" });
   var money = function (n) { return fmt.format(Math.round((n || 0) * 100) / 100) + " ريال"; };
   var uid = function () { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); };
   var pad = function (n) { return String(n).padStart(2, "0"); };
@@ -508,10 +508,10 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     if (state === "create") {
       var box = el("div", { class: "pin-box", id: "regBox", hidden: "" },
         el("div", { class: "pin-pair" }, pinField("pinNew0", "الرقم السري"), pinField("pinNew1", "تأكيد الرقم السري")),
-        el("p", { class: "gate-hint", text: "من ٤ إلى ٨ أرقام، ويُطلب عند كل دخول." }),
+        el("p", { class: "gate-hint", text: "من 4 إلى 8 أرقام، ويُطلب عند كل دخول." }),
         el("button", { class: "enter small", type: "button", text: "حفظ الرقم السري", onclick: async function () {
           var a = normPin($("pinNew0").value), b = normPin($("pinNew1").value);
-          if (!/^\d{4,8}$/.test(a)) { msg.textContent = "الرقم السري من ٤ إلى ٨ أرقام."; $("pinNew0").focus(); return; }
+          if (!/^\d{4,8}$/.test(a)) { msg.textContent = "الرقم السري من 4 إلى 8 أرقام."; $("pinNew0").focus(); return; }
           if (a !== b) { msg.textContent = "الرقمان غير متطابقين. أعد كتابة التأكيد."; $("pinNew1").value = ""; $("pinNew1").focus(); return; }
           await setPin(a);
           gateState = "open"; renderGateOpen("تم حفظ الرقم السري، وسيُطلب عند الدخول في المرات القادمة.");
@@ -530,7 +530,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         if (!inp.value) { msg.textContent = "اكتب الرقم السري ثم اضغط الدخول."; inp.focus(); return; }
         if (await checkPin(normPin(inp.value))) { attempts = 0; setUnlocked(true); go("sections"); return; }
         attempts++;
-        if (attempts >= 5) { lockedUntil = Date.now() + 30000; attempts = 0; msg.textContent = "خمس محاولات خاطئة. انتظر ٣٠ ثانية."; }
+        if (attempts >= 5) { lockedUntil = Date.now() + 30000; attempts = 0; msg.textContent = "خمس محاولات خاطئة. انتظر 30 ثانية."; }
         else msg.textContent = "الرقم السري غير صحيح.";
         inp.value = ""; inp.focus();
       } },
@@ -538,7 +538,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   }
 
   /* ---------- quotes (moving band at the top of every page) ---------- */
-  var QUOTES = {"money": [["المال خادم جيد، لكنه سيد فاسد.", "فرانسيس بيكون"], ["ليس المهم كم من المال تجني، بل كم من المال تدخر، وكيف يعمل هذا المال من أجلك.", "روبرت كيوساكي"], ["الثروة هي القدرة على تجربة الحياة بالكامل.", "هنري ديفيد ثورو"], ["الشخص الذي لا يعرف أين يذهب ماله، سيجد نفسه دائماً يتساءل أين ذهب.", ""], ["الفقر ليس نقصاً في المال، بل هو غياب العقلية المنتجة.", ""], ["إذا كنت تعمل من أجل المال، فأنت تعطي القوة لصاحب العمل. إذا كان المال يعمل من أجلك، فأنت من يمتلك القوة.", ""], ["الثروة الحقيقية هي ما تملكه عندما تفقد كل أموالك.", ""], ["الاستثمار في المعرفة يدفع دائماً أفضل الفوائد.", "بنجامين فرانكلين"], ["الأغنياء يستثمرون في الوقت، والفقراء يستثمرون في المال.", ""], ["النجاح المالي هو عبارة عن ٢٠٪ معرفة و٨٠٪ سلوك وانضباط.", "ديف رامزي"]], "saving": [["لا تدخر ما تبقى بعد الإنفاق، بل أنفق ما تبقى بعد الادخار.", "وارن بافيت"], ["كل درهم تدخره هو جندي يعمل في جيش ثروتك المستقبلية.", ""], ["الادخار هو فن العيش بأقل مما تكسب لتتمكن من العيش بأكثر مما كنت تتخيل لاحقاً.", ""], ["الحرمان المؤقت من الكماليات هو الثمن الذي تدفعه مقابل الحرية الأبدية.", ""], ["الرجل الذي يشتري ما لا يحتاجه، يسرق نفسه.", "مثل سويدي"], ["حتى أصغر قطرات الماء يمكنها ملء الحوض، وكذلك أصغر المدخرات.", ""], ["الادخار لا يعني البخل، بل يعني الذكاء في إدارة الموارد.", ""], ["الفرق بين الغني والفقير هو أن الغني يدخر ثم ينفق، والفقير ينفق ثم يحاول الادخار.", ""], ["كن حذراً من النفقات الصغيرة؛ فتسريب بسيط يمكن أن يغرق سفينة كبيرة.", "بنجامين فرانكلين"], ["الادخار هو تأجيل المتعة العابرة من أجل أمان دائم.", ""]], "debt": [["الدين هو الوحش الذي يأكل مستقبلك قبل أن يصل إليك.", ""], ["من يقترض، يبيع حريته.", "أندرو كارنيجي"], ["الديون هي العبيد الجدد في العصر الحديث.", ""], ["أفضل وقت لسداد ديونك كان بالأمس، ثاني أفضل وقت هو الآن.", ""], ["لا تشترِ شيئاً لتبهر أشخاصاً لا تحبهم بأموال لا تملكها.", ""], ["القروض تجعل الحياة تبدو سهلة في البداية، لكنها تجعلها مستحيلة في النهاية.", ""], ["العيش بدون ديون هو أرقى أنواع الرفاهية.", ""], ["الفائدة البنكية على الديون لا تنام، لا تمرض، ولا تأخذ عطلة؛ إنها تلتهمك بصمت.", ""], ["السعادة لا تُشترى ببطاقة ائتمان.", ""], ["أن تنام جائعاً أفضل من أن تستيقظ مديوناً.", "مثل عربي قديم"]], "invest": [["السوق مصمم لنقل الأموال من الشخص غير الصبور إلى الشخص الصبور.", "وارن بافيت"], ["أفضل وقت لزراعة شجرة كان منذ ٢٠ عاماً، ثاني أفضل وقت هو الآن.", "مثل صيني"], ["لا تضع كل بيضك في سلة واحدة.", ""], ["الاستثمار هو عملية تحويل الأموال من شخص يريد المتعة الفورية إلى شخص يريد الأمان المستقبلي.", ""], ["الثروة لا تأتي من الدخل العالي، بل من الأصول التي تدر دخلاً.", ""], ["الخطر الحقيقي هو عدم المخاطرة بأي شيء.", ""], ["المستثمر الذكي هو من يشتري عندما يخاف الجميع، ويبيع عندما يطمع الجميع.", ""], ["المال هو بذرة، إذا زرعتها في أرض الاستثمار أثمرت غابة من الثروة.", ""], ["الفائدة المركبة هي الأعجوبة الثامنة في العالم.", "ألبرت أينشتاين"], ["الاستثمار الناجح يتطلب وقتاً وانضباطاً وصبراً.", ""]], "life": [["المال لا يغير الناس، بل يكشف حقيقتهم فقط.", ""], ["أن تكون غنياً هو أن تملك المال، أما أن تكون ثرياً فهو أن تملك الوقت.", ""], ["الفقير ليس من لا يملك قرشاً، بل من لا يملك حلماً.", ""], ["المال يعطيك خيارات، والخيارات تعطيك الحرية.", ""], ["اجعل هدفك هو الاستقلال المالي، وليس مجرد جمع الأرقام.", ""], ["لا تدع كسب العيش ينسيك بناء حياة.", ""], ["العطاء هو جزء من الثقافة المالية الناجحة؛ المال الذي يخرج بصدق يعود ببركة.", ""], ["التخطيط المالي هو الفرق بين الحلم والواقع.", ""], ["كن سيد مالك، ولا تسمح له بأن يصبح سيدك.", ""], ["الرحلة نحو الثراء تبدأ بخطوة واحدة: قرار بأنك تستحق حياة أفضل.", ""]]};
+  var QUOTES = {"money": [["المال خادم جيد، لكنه سيد فاسد.", "فرانسيس بيكون"], ["ليس المهم كم من المال تجني، بل كم من المال تدخر، وكيف يعمل هذا المال من أجلك.", "روبرت كيوساكي"], ["الثروة هي القدرة على تجربة الحياة بالكامل.", "هنري ديفيد ثورو"], ["الشخص الذي لا يعرف أين يذهب ماله، سيجد نفسه دائماً يتساءل أين ذهب.", ""], ["الفقر ليس نقصاً في المال، بل هو غياب العقلية المنتجة.", ""], ["إذا كنت تعمل من أجل المال، فأنت تعطي القوة لصاحب العمل. إذا كان المال يعمل من أجلك، فأنت من يمتلك القوة.", ""], ["الثروة الحقيقية هي ما تملكه عندما تفقد كل أموالك.", ""], ["الاستثمار في المعرفة يدفع دائماً أفضل الفوائد.", "بنجامين فرانكلين"], ["الأغنياء يستثمرون في الوقت، والفقراء يستثمرون في المال.", ""], ["النجاح المالي هو عبارة عن 20% معرفة و80% سلوك وانضباط.", "ديف رامزي"]], "saving": [["لا تدخر ما تبقى بعد الإنفاق، بل أنفق ما تبقى بعد الادخار.", "وارن بافيت"], ["كل درهم تدخره هو جندي يعمل في جيش ثروتك المستقبلية.", ""], ["الادخار هو فن العيش بأقل مما تكسب لتتمكن من العيش بأكثر مما كنت تتخيل لاحقاً.", ""], ["الحرمان المؤقت من الكماليات هو الثمن الذي تدفعه مقابل الحرية الأبدية.", ""], ["الرجل الذي يشتري ما لا يحتاجه، يسرق نفسه.", "مثل سويدي"], ["حتى أصغر قطرات الماء يمكنها ملء الحوض، وكذلك أصغر المدخرات.", ""], ["الادخار لا يعني البخل، بل يعني الذكاء في إدارة الموارد.", ""], ["الفرق بين الغني والفقير هو أن الغني يدخر ثم ينفق، والفقير ينفق ثم يحاول الادخار.", ""], ["كن حذراً من النفقات الصغيرة؛ فتسريب بسيط يمكن أن يغرق سفينة كبيرة.", "بنجامين فرانكلين"], ["الادخار هو تأجيل المتعة العابرة من أجل أمان دائم.", ""]], "debt": [["الدين هو الوحش الذي يأكل مستقبلك قبل أن يصل إليك.", ""], ["من يقترض، يبيع حريته.", "أندرو كارنيجي"], ["الديون هي العبيد الجدد في العصر الحديث.", ""], ["أفضل وقت لسداد ديونك كان بالأمس، ثاني أفضل وقت هو الآن.", ""], ["لا تشترِ شيئاً لتبهر أشخاصاً لا تحبهم بأموال لا تملكها.", ""], ["القروض تجعل الحياة تبدو سهلة في البداية، لكنها تجعلها مستحيلة في النهاية.", ""], ["العيش بدون ديون هو أرقى أنواع الرفاهية.", ""], ["الفائدة البنكية على الديون لا تنام، لا تمرض، ولا تأخذ عطلة؛ إنها تلتهمك بصمت.", ""], ["السعادة لا تُشترى ببطاقة ائتمان.", ""], ["أن تنام جائعاً أفضل من أن تستيقظ مديوناً.", "مثل عربي قديم"]], "invest": [["السوق مصمم لنقل الأموال من الشخص غير الصبور إلى الشخص الصبور.", "وارن بافيت"], ["أفضل وقت لزراعة شجرة كان منذ 20 عاماً، ثاني أفضل وقت هو الآن.", "مثل صيني"], ["لا تضع كل بيضك في سلة واحدة.", ""], ["الاستثمار هو عملية تحويل الأموال من شخص يريد المتعة الفورية إلى شخص يريد الأمان المستقبلي.", ""], ["الثروة لا تأتي من الدخل العالي، بل من الأصول التي تدر دخلاً.", ""], ["الخطر الحقيقي هو عدم المخاطرة بأي شيء.", ""], ["المستثمر الذكي هو من يشتري عندما يخاف الجميع، ويبيع عندما يطمع الجميع.", ""], ["المال هو بذرة، إذا زرعتها في أرض الاستثمار أثمرت غابة من الثروة.", ""], ["الفائدة المركبة هي الأعجوبة الثامنة في العالم.", "ألبرت أينشتاين"], ["الاستثمار الناجح يتطلب وقتاً وانضباطاً وصبراً.", ""]], "life": [["المال لا يغير الناس، بل يكشف حقيقتهم فقط.", ""], ["أن تكون غنياً هو أن تملك المال، أما أن تكون ثرياً فهو أن تملك الوقت.", ""], ["الفقير ليس من لا يملك قرشاً، بل من لا يملك حلماً.", ""], ["المال يعطيك خيارات، والخيارات تعطيك الحرية.", ""], ["اجعل هدفك هو الاستقلال المالي، وليس مجرد جمع الأرقام.", ""], ["لا تدع كسب العيش ينسيك بناء حياة.", ""], ["العطاء هو جزء من الثقافة المالية الناجحة؛ المال الذي يخرج بصدق يعود ببركة.", ""], ["التخطيط المالي هو الفرق بين الحلم والواقع.", ""], ["كن سيد مالك، ولا تسمح له بأن يصبح سيدك.", ""], ["الرحلة نحو الثراء تبدأ بخطوة واحدة: قرار بأنك تستحق حياة أفضل.", ""]]};
   var QUOTE_FOR = { savings: ["saving"], notes: ["life"], "save-monthly": ["saving"], "save-total": ["saving"], "save-withdraw": ["saving"], debts: ["debt"], "debts-owe": ["debt"], "debts-due": ["debt", "life"], invest: ["invest"], zakat: ["life"], expenses: ["saving", "money"], actual: ["money"], unscheduled: ["saving"], chart: ["money", "invest"], income: ["money"], summary: ["money", "life"], overview: ["money", "life"] };
   var lastQuote = "";
   function showQuote(view) {
@@ -610,7 +610,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("button", { type: "button", "aria-label": "الشهر التالي", onclick: function () { shift(1); } }, svg(ICON_FWD)));
   }
   function amountInput(id, value, onval, label) {
-    return el("input", { class: "amt", id: id, inputmode: "decimal", autocomplete: "off", placeholder: "٠", "aria-label": label || "المبلغ",
+    return el("input", { class: "amt", id: id, inputmode: "decimal", autocomplete: "off", placeholder: "0", "aria-label": label || "المبلغ",
       value: value ? String(value) : "", disabled: S.readOnly ? "" : null,
       oninput: function (e) { onval(parseAmount(e.target.value)); refreshTotals(); } });
   }
@@ -1190,7 +1190,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     totalFns.zDue = function () { var c = calc(); if (!c.nisab) return "—"; return c.net >= c.nisab ? money(c.due) : "لم يبلغ المال النصاب"; };
     totalFns.zLeft = function () { var c = calc(); var d = c.due - (+z.paid || 0); return !c.due ? "—" : d > 0 ? "باقٍ " + money(d) : "أُخرجت كاملة"; };
     return [header("حساب الزكاة", "zakat", "الزكاة"),
-      el("p", { class: "hint", text: "زكاة المال ربع العشر (٢٫٥٪) إذا بلغ صافي المال النصاب وحال عليه الحول الهجري. النصاب قيمة ٨٥ جرامًا من الذهب عيار ٢٤." }),
+      el("p", { class: "hint", text: "زكاة المال ربع العشر (2.5%) إذا بلغ صافي المال النصاب وحال عليه الحول الهجري. النصاب قيمة 85 جرامًا من الذهب عيار 24." }),
       el("div", { class: "card" },
         el("h3", { text: "الأموال الزكوية" }),
         sortable(z.assets, path, z.assets.map(function (it, i) {
@@ -1205,7 +1205,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         el("h3", { text: "الحساب" }),
         el("div", { class: "subform" },
           el("label", null, "الديون الحالّة عليك", amountInput("zd", z.debtsDue, function (v) { z.debtsDue = v; save(path); }, "الديون الحالّة عليك")),
-          el("label", null, "سعر جرام الذهب عيار ٢٤", amountInput("zg", z.goldPrice, function (v) { z.goldPrice = v; save(path); }, "سعر جرام الذهب")),
+          el("label", null, "سعر جرام الذهب عيار 24", amountInput("zg", z.goldPrice, function (v) { z.goldPrice = v; save(path); }, "سعر جرام الذهب")),
           el("label", null, "يوم حولان الحول (هجري)", numSelect("zhd", 30, z.hawlDay, function (v) { z.hawlDay = v; save(path); render(); }, "يوم حولان الحول", function (i) { return fmt.format(i); })),
           el("label", null, "شهر حولان الحول", numSelect("zhm", 12, z.hawlMonth, function (v) { z.hawlMonth = v; save(path); render(); }, "شهر حولان الحول", function (i) { return HIJRI_MONTHS[i - 1]; })),
           el("label", null, "ما أخرجته من الزكاة", amountInput("zp", z.paid, function (v) { z.paid = v; save(path); }, "ما أخرجته من الزكاة"))),
@@ -1213,8 +1213,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         (function () {
           var h = nextHawl();
           if (!h) return el("p", { class: "hint", text: "اختر يوم الحول وشهره ليذكّرك التطبيق قبل الموعد بثلاثين يومًا." });
-          var g = new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { day: "numeric", month: "long", year: "numeric" }).format(h.date);
-          var hj = new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura", { day: "numeric", month: "long", year: "numeric" }).format(h.date);
+          var g = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(h.date);
+          var hj = new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(h.date);
           return el("div", { class: "total" }, el("span", { text: "الموعد القادم" }), el("b", { class: "num", text: h.days === 0 ? "اليوم" : hj + " (" + g + ")، بعد " + daysText(h.days) }));
         })()),
       el("p", { class: "hint", text: "الحساب تقديري، وفي الحالات الخاصة يُرجع إلى أهل العلم." })];
@@ -1229,7 +1229,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       msg.className = "pin-msg err";
       if (has && !(await checkPin(val("pinOld")))) { msg.textContent = "الرقم السري الحالي غير صحيح."; return; }
       var n1 = val("pinNew"), n2 = val("pinNew2");
-      if (!/^\d{4,8}$/.test(n1)) { msg.textContent = "الرقم السري من ٤ إلى ٨ أرقام."; return; }
+      if (!/^\d{4,8}$/.test(n1)) { msg.textContent = "الرقم السري من 4 إلى 8 أرقام."; return; }
       if (n1 !== n2) { msg.textContent = "الرقمان غير متطابقين. أعد كتابتهما."; return; }
       await setPin(n1);
       msg.className = "pin-msg ok"; msg.textContent = has ? "تم تغيير الرقم السري." : "تم وضع الرقم السري. سيُطلب منك عند كل دخول.";
@@ -1243,7 +1243,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       setTimeout(render, 1400);
     }
     return [header("الرقم السري", "sections", "الأقسام"),
-      el("p", { class: "hint", text: has ? "الرقم السري مفعّل، ويُطلب عند الدخول. تقدر تغيّره أو تلغيه من هنا." : "ضع رقمًا سريًا من ٤ إلى ٨ أرقام، ليُطلب عند كل دخول إلى ميزانيتي." }),
+      el("p", { class: "hint", text: has ? "الرقم السري مفعّل، ويُطلب عند الدخول. تقدر تغيّره أو تلغيه من هنا." : "ضع رقمًا سريًا من 4 إلى 8 أرقام، ليُطلب عند كل دخول إلى ميزانيتي." }),
       el("form", { class: "card", onsubmit: submit, novalidate: "" },
         el("div", { class: "subform" },
           has ? field("pinOld", "الرقم السري الحالي") : null,
@@ -1299,7 +1299,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     ].filter(Boolean);
     var base = Math.max(t.income, t.spent + t.saving, 1);
     var tips = [];
-    if (t.income && t.unsched / t.income > 0.1) tips.push("المصروفات غير المجدولة تجاوزت ١٠٪ من الدخل. صندوق طوارئ يغطي ثلاثة أشهر يخفف أثرها.");
+    if (t.income && t.unsched / t.income > 0.1) tips.push("المصروفات غير المجدولة تجاوزت 10% من الدخل. صندوق طوارئ يغطي ثلاثة أشهر يخفف أثرها.");
     if (t.income && t.debts / t.income > 0.33) tips.push("أقساط الديون أكثر من ثلث الدخل. تجنّب أي التزام جديد حتى تنخفض.");
     if (t.left < 0) tips.push("المصروفات والادخار تجاوزت الدخل بـ " + money(-t.left) + " هذا الشهر.");
     return [header("ملخص الشهر", "summary", "الملخص"), monthBar(),
@@ -1364,7 +1364,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var hist = keys.map(function (k) { return totals(k).income; }).filter(Boolean), avg = hist.length ? Math.round(sum(hist, function (v) { return v; }) / hist.length) : 0;
     var ytd = 0; for (var k = S.month.slice(0, 4) + "-01"; monthDiff(k, S.month) >= 0; k = addMonths(k, 1)) ytd += S.months[k] ? totals(k).income : 0;
     return head.concat(
-      kpiRow([["دخل الشهر", money(t.income)], ["متوسط آخر ٦ أشهر", money(avg)], ["منذ بداية السنة", money(ytd)]]),
+      kpiRow([["دخل الشهر", money(t.income)], ["متوسط آخر 6 أشهر", money(avg)], ["منذ بداية السنة", money(ytd)]]),
       el("div", { class: "card" }, el("h3", { text: "مصادر الدخل" }), shareRows(m.income.map(function (x) { return { n: x.name, v: +x.amount || 0 }; }), t.income)),
       el("div", { class: "card" }, el("h3", { text: "تحليل" }), noteList([
         diffText(t.income, prev, "دخل هذا الشهر"),
@@ -1390,8 +1390,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "card" }, el("h3", { text: "أكبر خمسة بنود" }), shareRows(top, exp)),
       el("div", { class: "card" }, el("h3", { text: "تحليل" }), noteList([
         diffText(exp, prevExp, "مصروفات هذا الشهر"),
-        t.income && exp / t.income > 0.8 ? "المصروفات تتجاوز ٨٠٪ من الدخل، فراجع أكبر البنود أعلاه." : null,
-        t.income && t.unsched / t.income > 0.1 ? secName("unscheduled") + " تجاوزت ١٠٪ من الدخل." : null,
+        t.income && exp / t.income > 0.8 ? "المصروفات تتجاوز 80% من الدخل، فراجع أكبر البنود أعلاه." : null,
+        t.income && t.unsched / t.income > 0.1 ? secName("unscheduled") + " تجاوزت 10% من الدخل." : null,
         top[0] ? "أكبر بند هذا الشهر «" + (top[0].n || "بلا اسم") + "» بمبلغ " + money(top[0].v) + "." : null
       ])));
   };
@@ -1407,12 +1407,12 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     return head.concat(
       kpiRow([["ادخار الشهر", money(t.saving)], ["من الدخل", t.income ? fmtPct.format(t.saving / t.income) : "—"], ["متوسط شهري", money(avg)]]),
       el("div", { class: "card" }, el("h3", { text: "توزيع ادخار الشهر" }), shareRows(list.map(function (it, n) { return { n: fmt.format(n + 1) + ". " + (it.name || "بلا اسم"), v: savedOf(m, it.id) }; }), t.saving)),
-      el("div", { class: "card" }, el("h3", { text: "تحليل آخر ١٢ شهرًا" }), noteList([
+      el("div", { class: "card" }, el("h3", { text: "تحليل آخر 12 شهرًا" }), noteList([
         diffText(t.saving, totals(addMonths(S.month, -1)).saving, "ادخار هذا الشهر"),
         best ? "أفضل شهر في الادخار " + monthName(best.k, true) + " بمبلغ " + money(best.v) + "." : null,
         streak > 1 ? "ادخرت " + fmt.format(streak) + " أشهر متتالية حتى هذا الشهر، استمر." : null,
-        out12 ? "سحبت من مدخراتك " + money(out12) + " خلال آخر ١٢ شهرًا." : null,
-        t.income && t.saving / t.income < 0.1 ? "الادخار أقل من ١٠٪ من الدخل؛ جرّب تحويل المبلغ أول الشهر قبل الصرف." : null
+        out12 ? "سحبت من مدخراتك " + money(out12) + " خلال آخر 12 شهرًا." : null,
+        t.income && t.saving / t.income < 0.1 ? "الادخار أقل من 10% من الدخل؛ جرّب تحويل المبلغ أول الشهر قبل الصرف." : null
       ])));
   };
 
@@ -1427,7 +1427,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "card" }, el("h3", { text: "تحليل" }), noteList([
         perf[0] ? "الأفضل أداءً «" + perf[0].n + "» بعائد " + fmtPct.format(perf[0].r) + "." : null,
         perf.length > 1 && perf[perf.length - 1].r < 0 ? "الأضعف «" + perf[perf.length - 1].n + "» بخسارة " + fmtPct.format(-perf[perf.length - 1].r) + "." : null,
-        cur && Math.max.apply(null, byType.map(function (b) { return b.v; })) / cur > 0.6 ? "أكثر من ٦٠٪ من محفظتك في نوع واحد؛ التنويع يقلل المخاطر." : null
+        cur && Math.max.apply(null, byType.map(function (b) { return b.v; })) / cur > 0.6 ? "أكثر من 60% من محفظتك في نوع واحد؛ التنويع يقلل المخاطر." : null
       ]) || el("p", { class: "empty", text: "لا توجد استثمارات مسجلة." }))];
   };
 
@@ -1441,7 +1441,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       kpiRow([["صافي المال", money(c.net)], ["الزكاة الواجبة", c.nisab ? money(c.due) : "—"], ["المتبقي إخراجه", c.due ? money(left) : "—", left ? "neg" : "pos"]]),
       el("div", { class: "card" }, el("h3", { text: "الأموال الزكوية" }), shareRows(S.zakat.assets.map(function (a) { return { n: a.name, v: +a.amount || 0 }; }), c.assets)),
       el("div", { class: "card" }, el("h3", { text: "تحليل" }), noteList([
-        !c.nisab ? "أدخل سعر جرام الذهب في «حساب الزكاة» لمعرفة النصاب." : c.net >= c.nisab ? "بلغ مالك النصاب (" + money(c.nisab) + ")، والزكاة ٢٫٥٪ من صافي المال." : "لم يبلغ صافي مالك النصاب (" + money(c.nisab) + ")، فلا زكاة عليه الآن.",
+        !c.nisab ? "أدخل سعر جرام الذهب في «حساب الزكاة» لمعرفة النصاب." : c.net >= c.nisab ? "بلغ مالك النصاب (" + money(c.nisab) + ")، والزكاة 2.5% من صافي المال." : "لم يبلغ صافي مالك النصاب (" + money(c.nisab) + ")، فلا زكاة عليه الآن.",
         c.due ? (left ? "أخرجت " + money(c.paid) + " وبقي " + money(left) + "." : "أخرجت الزكاة كاملة، تقبّل الله.") : null,
         h ? (h.days === 0 ? "اليوم موعد حولان الحول." : "حولان الحول القادم بعد " + daysText(h.days) + ".") : "اختر يوم الحول وشهره في «حساب الزكاة» ليظهر الموعد."
       ])),
@@ -1450,7 +1450,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 
   /* ---------- notes: the owner's own remarks, alerts, ideas and recommendations ---------- */
   var NOTE_TYPES = ["ملحوظة", "تنبيه", "مقترح", "توصية"];
-  var fmtLongDay = new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  var fmtLongDay = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   function todayKey() { var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
   /* a note whose reminder day has come shows at the top of the sections page until it is done or closed */
   ALERTS.push(function () {
@@ -1470,7 +1470,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       var i = list.indexOf(n);
       var stars = el("div", { class: "stars", role: "group", "aria-label": "الأهمية" });
       for (var k = 1; k <= 5; k++) (function (k) {
-        stars.append(el("button", { type: "button", class: k <= (+n.stars || 0) ? "on" : "", text: "★", "aria-label": "الأهمية " + fmt.format(k) + " من ٥", "aria-pressed": k === +n.stars ? "true" : "false",
+        stars.append(el("button", { type: "button", class: k <= (+n.stars || 0) ? "on" : "", text: "★", "aria-label": "الأهمية " + fmt.format(k) + " من 5", "aria-pressed": k === +n.stars ? "true" : "false",
           disabled: S.readOnly ? "" : null, onclick: function () { n.stars = +n.stars === k ? 0 : k; save(path); render(); } }));
       })(k);
       return el("div", { class: "item note" + (n.done ? " done" : "") },
@@ -1517,8 +1517,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   if (CH.on.exp) { delete CH.on.exp; CH.on.fixed = 1; CH.on.variable = 1; }
   var chartMenuOpen = false;
   function chartPrefs() { lsSet("ui/chart", CH); render(); }
-  var fmtShort = new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { month: "short" });
-  var fmtCompact = new Intl.NumberFormat("ar-SA", { notation: "compact", maximumFractionDigits: 1 });
+  var fmtShort = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", { month: "short" });
+  var fmtCompact = new Intl.NumberFormat("ar-SA-u-nu-latn", { notation: "compact", maximumFractionDigits: 1 });
   function monthName(key, withYear) { var p = key.split("-").map(Number), d = new Date(p[0], p[1] - 1, 1); return withYear ? fmtMonth.format(d) : fmtShort.format(d); }
   function niceStep(span, n) { var raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw || 1))), r = raw / mag; return (r <= 1 ? 1 : r <= 2 ? 2 : r <= 2.5 ? 2.5 : r <= 5 ? 5 : 10) * mag; }
   VIEWS.chart = function () {
