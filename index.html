@@ -137,6 +137,9 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbing; }
 .alerts { display: grid; gap: 8px; }
 .alert { display: block; border: 1px solid var(--gold); background: var(--gold-soft); color: var(--ink); border-radius: 8px; padding: 10px 14px; text-decoration: none; text-align: center; font-size: .95rem; }
+.alert-wrap { position: relative; }
+.alert-wrap .alert { padding-inline: 40px; }
+.alert-x { position: absolute; top: 50%; left: 4px; transform: translateY(-50%); }
 .copy-prev { display: grid; justify-items: center; gap: 6px; }
 .fab { position: fixed; z-index: 20; left: max(18px, env(safe-area-inset-left, 0px)); bottom: calc(22px + env(safe-area-inset-bottom, 0px)); width: 58px; height: 58px; border-radius: 50%; border: 0; background: var(--gold); color: var(--bg-deep); font-size: 2rem; line-height: 1; cursor: pointer; box-shadow: 0 6px 18px rgba(0, 0, 0, .45), 0 0 0 5px var(--gold-soft); display: grid; place-items: center; }
 .fab[hidden] { display: none; }
@@ -708,7 +711,10 @@ body.has-fab .wrap { padding-bottom: 100px; }
     head.append(el("a", { class: "lockbtn", href: "#pin", "aria-label": "الرقم السري", title: "الرقم السري" }, svg(LOCK_ICON)));
     var alerts = ALERTS.map(function (f) { return f(); }).filter(Boolean);
     return [head,
-      alerts.length ? el("div", { class: "alerts" }, alerts.map(function (a) { return el("a", { class: "alert", href: "#" + a.go, text: a.text }); })) : null,
+      alerts.length ? el("div", { class: "alerts" }, alerts.map(function (a) {
+        var link = el("a", { class: "alert", href: "#" + a.go, text: a.text });
+        return a.dismiss ? el("div", { class: "alert-wrap" }, link, el("button", { class: "x alert-x", type: "button", "aria-label": "إخفاء التذكير", text: "×", onclick: function () { a.dismiss(); render(); } })) : link;
+      })) : null,
       el("div", { class: "grid" },
         tile("income", "الدخل والموارد", "الراتب وأي دخل أو مورد إضافي", money(t.income)),
         tile("expenses", "المصروفات", "الفعلية · غير المجدولة · الطارئة", money(t.actFixed + t.actVar + t.unsched + t.emerg)),
@@ -1253,13 +1259,15 @@ body.has-fab .wrap { padding-bottom: 100px; }
         el("input", { id: "importFile", type: "file", accept: ".json,application/json", hidden: "", onchange: pick }),
         msg, confirmBox)];
   };
-  /* remind to export when there is data and the last backup is missing or over a month old */
+  /* remind to export twice a month: from the 1st and from the 15th, until a backup is made or the reminder is closed */
   ALERTS.unshift(function () {
-    var last = lsGet("lastBackup"), hasData = Object.keys(allData()).some(function (k) { return k.indexOf("months/") === 0; });
+    var hasData = Object.keys(allData()).some(function (k) { return k.indexOf("months/") === 0; });
     if (!hasData) return null;
-    if (!last) return { go: "backup", text: "لم تصدّر نسخة احتياطية بعد. احفظ نسخة الآن حتى لا تضيع بياناتك." };
-    var days = Math.floor((Date.now() - new Date(last).getTime()) / 864e5);
-    return days >= 30 ? { go: "backup", text: "مضى " + daysText(days) + " على آخر نسخة احتياطية. صدّر نسخة جديدة الآن." } : null;
+    var d = new Date(), since = new Date(d.getFullYear(), d.getMonth(), d.getDate() >= 15 ? 15 : 1).getTime();
+    var last = lsGet("lastBackup"), closed = lsGet("backupReminderClosed");
+    if ((last && new Date(last).getTime() >= since) || (closed && closed >= since)) return null;
+    return { go: "backup", dismiss: function () { lsSet("backupReminderClosed", Date.now()); },
+      text: last ? "حان موعد النسخة الاحتياطية. آخر نسخة كانت قبل " + daysText(Math.max(Math.floor((Date.now() - new Date(last).getTime()) / 864e5), 1)) + "." : "حان موعد النسخة الاحتياطية. احفظ نسخة الآن حتى لا تضيع بياناتك." };
   });
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
   if ("serviceWorker" in navigator && location.protocol === "https:") { try { navigator.serviceWorker.register("sw.js"); } catch (e) {} }
