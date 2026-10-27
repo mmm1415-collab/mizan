@@ -609,6 +609,12 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     return el("select", { id: id, class: "src-sel", "aria-label": "جهة الاستقطاع", disabled: S.readOnly ? "" : null, onchange: function (e) { it.src = e.target.value; save(path); } },
       SRC_OPTS.map(function (o) { var n = el("option", { value: o[0], text: o[1] }); if ((it.src || "") === o[0]) n.selected = true; return n; }));
   }
+  /* an income source is the salary or extra income; unset ones are guessed from the name */
+  function incomeSrc(it) { return it.src || (/راتب/.test(it.name || "") ? "salary" : "pension"); }
+  function incomeSrcSelect(id, it, path) {
+    return el("select", { id: id, class: "src-sel", "aria-label": "نوع الدخل", disabled: S.readOnly ? "" : null, onchange: function (e) { it.src = e.target.value; save(path); } },
+      [["salary", "راتب"], ["pension", "دخل إضافي"]].map(function (o) { var n = el("option", { value: o[0], text: o[1] }); if (incomeSrc(it) === o[0]) n.selected = true; return n; }));
+  }
   function srcRow(name, it, path, amount, del) { name.classList.add("src-name"); return el("div", { class: "row src-row" }, name, srcSelect("src-" + it.id, it, path), amount, del); }
   /* this month's deductions per source: expenses, debt instalments, and commitments on you */
   function srcTotals(key) {
@@ -921,7 +927,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 41" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 42" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1422,8 +1428,9 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     return [header("مصادر الدخل", "income", "الدخل"), monthBar(),
       el("div", { class: "card" },
         list.length ? sortable(list, path, list.map(function (it, i) {
-          return el("div", { class: "row" },
-            textInput("in-" + it.id, it.name, function (v) { it.name = v; save(path); }, "مصدر الدخل", "مصدر الدخل"),
+          var name = textInput("in-" + it.id, it.name, function (v) { it.name = v; save(path); }, "مصدر الدخل", "مصدر الدخل");
+          name.classList.add("src-name");
+          return el("div", { class: "row src-row" }, name, incomeSrcSelect("is-" + it.id, it, path),
             amountInput("ia-" + it.id, it.amount, function (v) { it.amount = v; save(path); }, "مبلغ " + it.name),
             delBtn(it.name, remover(list, i, path)));
         })) : el("p", { class: "empty", text: "لا يوجد دخل مسجل لهذا الشهر." }),
@@ -1480,6 +1487,22 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
               return el("tr", null, el("td", { text: k ? "من " + SRC_NAME[k] : "غير محددة" }), col(k, function (x) { return x.exp; }), col(k, function (x) { return x.debt; }), col(k, function (x) { return x.cm; }), col(k, function (x) { return x.exp + x.debt + x.cm; }));
             })))),
           el("p", { class: "hint", text: "المصروفات وأقساط الديون لهذا الشهر، والالتزامات عليك بمبالغها المسجلة. حدد جهة الاستقطاع لكل بند من صفحته." }));
+      })(),
+      (function () {
+        var r = srcTotals(), m = monthDoc(), none = r[""] ? r[""].exp + r[""].debt : 0;
+        var rows = [["salary", "الراتب"], ["pension", "الدخل الإضافي"]].map(function (k) {
+          var inc = sum(m.income.filter(function (it) { return incomeSrc(it) === k[0]; }), amt), out = r[k[0]] ? r[k[0]].exp + r[k[0]].debt : 0;
+          return { n: k[1], inc: inc, out: out, left: inc - out };
+        }).filter(function (x) { return x.inc || x.out; });
+        if (!rows.length) return null;
+        return el("div", { class: "card" }, el("h3", { text: "المتبقي من كل جهة دخل" }),
+          el("div", { class: "ctable-wrap" }, el("table", { class: "ctable" },
+            el("thead", null, el("tr", null, ["الجهة", "الدخل", "المستقطع", "المتبقي"].map(function (h) { return el("th", { text: h }); }))),
+            el("tbody", null, rows.map(function (x) {
+              return el("tr", null, el("td", { text: x.n }), el("td", { class: "num", text: fmtAmt.format(x.inc) }), el("td", { class: "num", text: fmtAmt.format(x.out) }),
+                el("td", { class: "num " + (x.left < 0 ? "neg" : "pos"), text: fmtAmt.format(x.left) }));
+            })))),
+          el("p", { class: "hint", text: "المستقطع هو مصروفات الشهر وأقساط الديون. نوع كل دخل يُحدَّد من «مصادر الدخل»." + (none ? " بنود بلا جهة استقطاع بمبلغ " + money(none) + " لم تُحسب هنا." : "") }));
       })(),
       el("div", { class: "card" },
         el("h3", { text: "مواضع التوفير" }),
