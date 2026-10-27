@@ -114,11 +114,15 @@ a.tile:hover { border-color: var(--gold); }
 .card h3 { font-size: 1rem; font-weight: 500; color: var(--gold); }
 .hint { margin: 0; color: var(--muted); font-size: .9rem; text-align: center; }
 .rows { display: grid; gap: 8px; }
-.row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 110px 52px; gap: 8px; align-items: center; }
+.row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 136px 52px; gap: 8px; align-items: center; }
 .row .lbl { min-width: 0; overflow-wrap: anywhere; }
 .row .sub { display: block; color: var(--muted); font-size: .8rem; }
 input, select { width: 100%; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; }
 input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums; }
+.amt-pair { display: flex; direction: ltr; align-items: center; gap: 2px; width: 100%; min-width: 0; }
+.amt-pair input.amt { flex: 1 1 auto; padding-inline: 6px; }
+.amt-pair input.hal { flex: 0 0 2.6em; text-align: center; padding-inline: 2px; }
+.amt-dot { color: var(--muted); font-weight: 700; }
 .x { border: 0; background: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; width: 32px; height: 32px; border-radius: 6px; }
 .x:hover { color: var(--bad); background: var(--panel-2); }
 .add { justify-self: start; border: 1px dashed var(--gold); background: none; color: var(--gold); border-radius: 6px; padding: 6px 14px; cursor: pointer; }
@@ -129,7 +133,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 .item { border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 8px; background: var(--panel-2); }
 .item input, .item select { background: var(--panel); }
 .item-head { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 52px; gap: 8px; align-items: center; }
-.row.grip-on { grid-template-columns: 28px minmax(0, 1fr) 96px 52px; }
+.row.grip-on { grid-template-columns: 22px minmax(0, 1fr) 132px 52px; }
 .item-head.grip-on { grid-template-columns: 28px minmax(0, 1fr) 52px; }
 .add.add-wide { width: 100%; justify-self: stretch; border-style: solid; border-color: var(--gold); color: var(--gold); font-weight: 700; padding: 10px; }
 .shares { display: grid; gap: 10px; }
@@ -138,10 +142,10 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 .share-top small { color: var(--muted); text-align: left; }
 .share .track { height: 6px; margin-top: 4px; }
 .track.big { height: 12px; }
-.save-head { display: grid; grid-template-columns: 22px minmax(0, 1fr) 84px 52px; gap: 8px; font-size: .8rem; color: var(--gold); text-align: center; }
-.save-head.grip-on { grid-template-columns: 28px 22px minmax(0, 1fr) 76px 52px; }
-.save-row { grid-template-columns: 22px minmax(0, 1fr) 84px 52px; }
-.save-row.grip-on { grid-template-columns: 28px 22px minmax(0, 1fr) 76px 52px; }
+.save-head { display: grid; grid-template-columns: 22px minmax(0, 1fr) 132px 52px; gap: 8px; font-size: .8rem; color: var(--gold); text-align: center; }
+.save-head.grip-on { grid-template-columns: 22px 22px minmax(0, 1fr) 128px 52px; }
+.save-row { grid-template-columns: 22px minmax(0, 1fr) 132px 52px; }
+.save-row.grip-on { grid-template-columns: 22px 22px minmax(0, 1fr) 128px 52px; }
 .why { display: grid; gap: 4px; font-size: .8rem; color: var(--gold); min-width: 0; }
 .save-no { color: var(--gold); font-weight: 700; text-align: center; }
 .del { border: 1px solid var(--bad); background: transparent; color: var(--bad); border-radius: 6px; height: 34px; padding: 0 6px; cursor: pointer; font: inherit; font-size: .85rem; }
@@ -623,12 +627,27 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("strong", { text: fmtMonth.format(new Date(p[0], p[1] - 1, 1)) }),
       el("button", { type: "button", "aria-label": "الشهر التالي", onclick: function () { shift(1); } }, svg(ICON_FWD)));
   }
+  /* riyals and halalas are two fields side by side; a separator typed in the riyals jumps to the halalas */
+  var fmtInt = new Intl.NumberFormat("ar-SA-u-nu-latn", { maximumFractionDigits: 0 });
   function amountInput(id, value, onval, label) {
-    return el("input", { class: "amt", id: id, inputmode: "decimal", autocomplete: "off", placeholder: "0.00", "aria-label": label || "المبلغ",
-      value: value ? fmtAmt.format(value) : "", disabled: S.readOnly ? "" : null,
-      oninput: function (e) { onval(parseAmount(e.target.value)); refreshTotals(); },
-      onfocus: function (e) { var f = e.target; if (f.value.trim()) { f.value = String(parseAmount(f.value)); setTimeout(function () { try { f.setSelectionRange(0, f.value.length); } catch (x) {} }, 0); } },
-      onblur: function (e) { if (e.target.value.trim()) e.target.value = fmtAmt.format(parseAmount(e.target.value)); } });
+    var cents = Math.round((+value || 0) * 100), ro = S.readOnly ? "" : null, jump = false;
+    var rial = el("input", { class: "amt", id: id, inputmode: "numeric", autocomplete: "off", placeholder: "0", "aria-label": (label || "المبلغ") + " بالريال",
+      value: cents ? fmtInt.format(Math.floor(cents / 100)) : "", disabled: ro,
+      oninput: function () {
+        var v = rial.value, k = v.search(/[^\d,٬]/);
+        if (k >= 0) { var rest = v.slice(k).replace(/\D/g, "").slice(0, 2); rial.value = v.slice(0, k).replace(/\D/g, ""); hal.value = rest; jump = true; hal.focus(); jump = false; }
+        else rial.value = v.replace(/\D/g, "");
+        changed();
+      },
+      onfocus: function () { rial.value = rial.value.replace(/\D/g, ""); setTimeout(function () { try { rial.setSelectionRange(0, rial.value.length); } catch (x) {} }, 0); },
+      onblur: function () { var n = rial.value.replace(/\D/g, ""); rial.value = n ? fmtInt.format(+n) : ""; } });
+    var hal = el("input", { class: "amt hal", id: id + "-h", inputmode: "numeric", autocomplete: "off", placeholder: "00", maxlength: "2", "aria-label": "الهللات",
+      value: cents % 100 ? pad(cents % 100) : "", disabled: ro,
+      oninput: function () { hal.value = hal.value.replace(/\D/g, "").slice(0, 2); changed(); },
+      onfocus: function () { if (jump) return; setTimeout(function () { try { hal.setSelectionRange(0, hal.value.length); } catch (x) {} }, 0); },
+      onblur: function () { if (hal.value) hal.value = pad(+hal.value); } });
+    function changed() { onval((+rial.value.replace(/\D/g, "") || 0) + (+hal.value || 0) / 100); refreshTotals(); }
+    return el("span", { class: "amt-pair" }, rial, el("span", { class: "amt-dot", "aria-hidden": "true", text: "." }), hal);
   }
   function textInput(id, value, onval, label, ph) {
     return el("input", { id: id, value: value || "", "aria-label": label, placeholder: ph || "", maxlength: "60", autocomplete: "off", disabled: S.readOnly ? "" : null,
@@ -867,7 +886,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 32" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 33" })];
   };
   VIEWS.budget = function () {
     var t = totals();
