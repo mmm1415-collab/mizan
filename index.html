@@ -217,6 +217,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 .debt-link svg { width: 18px; height: 18px; color: var(--gold); }
 .debt-party { min-width: 0; display: grid; } .debt-party b { overflow-wrap: anywhere; } .debt-party small, .debt-left small { color: var(--muted); font-size: .78rem; font-weight: 400; }
 .debt-left { display: grid; text-align: left; color: var(--gold); font-weight: 700; } .debt-left.pos { color: var(--ok); }
+.sum-link { color: inherit; text-decoration: none; } .sum-link:hover span, .sum-link:focus-visible span { color: var(--gold); }
 .item-foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-size: .85rem; color: var(--muted); }
 
 .track { height: 8px; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
@@ -897,7 +898,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 38" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 39" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1382,7 +1383,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var t = totals();
     return [header("الملخص المالي", "services", "الخدمات"), monthBar(),
       el("div", { class: "grid" },
-        tile("overview", "ملخص الشهر", "أين ذهب المال وكم بقي", money(t.left)))];
+        tile("overview", "ملخص الشهر", "أين ذهب المال وكم بقي · الديون والالتزامات", money(t.left)))];
   };
 
   VIEWS.income = function () {
@@ -1435,6 +1436,16 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         el("div", { class: "legend" }, parts.map(function (p) {
           return el("div", null, el("i", { style: "background:" + p.c }), el("span", { text: p.k }), el("b", { class: "num", text: money(p.v) }), el("span", { class: "pct num", text: t.income ? fmtPct.format(p.v / t.income) : "—" }));
         }))),
+      (function () {
+        var dOn = sum(S.debts.list, function (d) { return d.remaining; }), dFor = sum(S.debts.owed || [], owedLeft), cOn = cmTotal(S.debts.commit), cFor = cmTotal(S.debts.commitFor), net = dFor + cFor - dOn - cOn;
+        totalFns.ovNet = function () { return money(Math.abs(net)) + (net > 0 ? " لك" : net < 0 ? " عليك" : ""); };
+        return el("div", { class: "card" },
+          el("h3", { text: "الديون والالتزامات" }),
+          [["الديون عليك", dOn, "debts-owe"], ["الديون لك", dFor, "debts-due"], ["الالتزامات عليك", cOn, "debts-commit"], ["الالتزامات لك", cFor, "commit-for"]].map(function (r) {
+            return el("a", { class: "total sum-link", href: "#" + r[2] }, el("span", { text: r[0] }), el("b", { class: "num", text: money(r[1]) }));
+          }),
+          el("div", { class: "total" }, el("span", { text: "الصافي" }), el("b", { class: "num " + (net < 0 ? "neg" : net > 0 ? "pos" : ""), "data-total": "ovNet" })));
+      })(),
       el("div", { class: "card" },
         el("h3", { text: "مواضع التوفير" }),
         tips.length ? el("ul", { class: "tips" }, tips.map(function (x) { return el("li", { text: x }); }))
