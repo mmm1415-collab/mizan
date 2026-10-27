@@ -132,6 +132,12 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 .row.grip-on { grid-template-columns: 28px minmax(0, 1fr) 96px 52px; }
 .item-head.grip-on { grid-template-columns: 28px minmax(0, 1fr) 52px; }
 .add.add-wide { width: 100%; justify-self: stretch; border-style: solid; border-color: var(--gold); color: var(--gold); font-weight: 700; padding: 10px; }
+.shares { display: grid; gap: 10px; }
+.share-top { display: grid; grid-template-columns: minmax(0, 1fr) auto 3.2em; gap: 8px; align-items: baseline; font-size: .92rem; }
+.share-top span { overflow-wrap: anywhere; }
+.share-top small { color: var(--muted); text-align: left; }
+.share .track { height: 6px; margin-top: 4px; }
+.track.big { height: 12px; }
 .save-head { display: grid; grid-template-columns: 22px minmax(0, 1fr) 84px 52px; gap: 8px; font-size: .8rem; color: var(--gold); text-align: center; }
 .save-head.grip-on { grid-template-columns: 28px 22px minmax(0, 1fr) 76px 52px; }
 .save-row { grid-template-columns: 22px minmax(0, 1fr) 84px 52px; }
@@ -840,11 +846,13 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 
   VIEWS.expenses = function () {
     var t = totals();
-    return [header("المصروفات", "sections", "الأقسام"), monthBar()].concat(
-      secEditor("expenses", ["actual", "unscheduled"],
+    var parts = secEditor("expenses", ["actual", "unscheduled"],
         { actual: "مصروفات متكررة كل شهر", unscheduled: "مصروفات خارج الخطة" },
-        function (k) { return k === "actual" ? money(t.actFixed) : k === "unscheduled" ? money(t.unsched) : money(sumOne(k)); }));
+        function (k) { return k === "actual" ? money(t.actFixed) : k === "unscheduled" ? money(t.unsched) : money(sumOne(k)); });
+    if (secEditing !== "expenses" && parts[0]) parts[0].append(tile("exp-sum", "ملخص المصروفات", "حسب القسم وأكبر البنود", null));
+    return [header("المصروفات", "sections", "الأقسام"), monthBar()].concat(parts);
   };
+
 
   function sumOne(k) { var c = customSec(k), m = monthDoc(); return c ? sum(c.items || [], function (it) { return m.actual[it.id] || 0; }) : 0; }
   /* a section of recurring items: names stay for every month, amounts are kept per month */
@@ -895,13 +903,42 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         totalRow("مجموع الشهر", "un"))];
   };
 
+  /* ---------- summaries ---------- */
+  function shareRows(rows, total) {
+    rows = rows.filter(function (r) { return r.v; }).sort(function (a, b) { return b.v - a.v; });
+    if (!rows.length) return el("p", { class: "empty", text: "لا توجد مبالغ بعد." });
+    return el("div", { class: "shares" }, rows.map(function (r) {
+      var pct = total ? r.v / total : 0;
+      return el("div", { class: "share" },
+        el("div", { class: "share-top" }, el("span", { text: r.n || "بلا اسم" }), el("b", { class: "num", text: money(r.v) }), el("small", { class: "num", text: total ? fmtPct.format(pct) : "" })),
+        el("div", { class: "track" }, el("div", { class: "fill", style: "width:" + Math.min(Math.abs(pct) * 100, 100).toFixed(1) + "%" })));
+    }));
+  }
+  function kpiRow(list) { return el("div", { class: "kpis" }, list.map(function (k) { return el("div", { class: "kpi" }, el("span", { text: k[0] }), el("b", { class: "num " + (k[2] || ""), text: k[1] })); })); }
+  function diffText(cur, prev, what) {
+    if (!prev) return "لا توجد بيانات في الشهر السابق للمقارنة.";
+    var d = cur - prev, p = Math.abs(d) / prev;
+    return d === 0 ? what + " مثل الشهر السابق." : what + (d > 0 ? " أعلى" : " أقل") + " من الشهر السابق بـ " + money(Math.abs(d)) + " (" + fmtPct.format(p) + ").";
+  }
+  function noteList(items) { items = items.filter(Boolean); return items.length ? el("ul", { class: "tips" }, items.map(function (x) { return el("li", { text: x }); })) : null; }
+  /* load the last n months before rendering a summary that compares them */
+  function needMonths(view, n) {
+    var keys = []; for (var i = n - 1; i >= 0; i--) keys.push(addMonths(S.month, -i));
+    var missing = keys.filter(function (k) { return !loadedMonths[k] && !S.months[k]; });
+    if (!missing.length) return keys;
+    Promise.all(missing.map(loadMonth)).then(function () { if (current === view) render(); });
+    return null;
+  }
+  function loadingCard() { return el("div", { class: "card" }, el("p", { class: "empty", text: "جارٍ تجهيز الملخص…" })); }
+
   function owedLeft(x) { return Math.max((+x.amount || 0) - (+x.paid || 0), 0); }
   VIEWS.debts = function () {
     var t = totals(), owed = S.debts.owed || [];
     return [header("الديون والالتزامات", "sections", "الأقسام"),
       el("div", { class: "grid" },
         tile("debts-owe", "الديون عليك", "القروض والأقساط · قسط الشهر", money(t.debts)),
-        tile("debts-due", "الديون لك", "ما أقرضته للآخرين · المتبقي تحصيله", money(sum(owed, owedLeft))))];
+        tile("debts-due", "الديون لك", "ما أقرضته للآخرين · المتبقي تحصيله", money(sum(owed, owedLeft))),
+        tile("debts-sum", "ملخص الديون", "تحليل الديون ونسبة السداد", null))];
   };
 
   VIEWS["debts-due"] = function () {
@@ -947,7 +984,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           var foot = el("div", { class: "item-foot" });
           function upd() {
             var ml = d.installment > 0 && d.remaining > 0 ? Math.ceil(d.remaining / d.installment) : 0;
-            foot.textContent = ml ? "ينتهي السداد بعد " + fmt.format(ml) + " شهرًا تقريبًا" : "أدخل المتبقي والقسط لمعرفة مدة السداد";
+            var paid = +d.total > 0 ? Math.max(d.total - (+d.remaining || 0), 0) : 0;
+            foot.textContent = (ml ? "ينتهي السداد بعد " + fmt.format(ml) + " شهرًا تقريبًا" : "أدخل المتبقي والقسط لمعرفة مدة السداد") + (paid ? " · سُدّد " + fmtPct.format(paid / d.total) : "");
           }
           upd();
           return el("div", { class: "item" },
@@ -956,12 +994,12 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
               delBtn(d.name, remover(list, i, path))),
             el("div", { class: "subform" },
               el("label", null, "الجهة", textInput("dc-" + d.id, d.creditor, function (v) { d.creditor = v; save(path); }, "الجهة", "البنك أو الشخص")),
-              el("label", null, "يوم السداد", textInput("dd-" + d.id, d.due, function (v) { d.due = v; save(path); }, "يوم السداد", "مثال: ٢٧ من كل شهر")),
+              el("label", null, "المبلغ الإجمالي", amountInput("dt-" + d.id, d.total, function (v) { d.total = v; upd(); save(path); }, "المبلغ الإجمالي للدين")),
               el("label", null, "القسط الشهري", amountInput("di-" + d.id, d.installment, function (v) { d.installment = v; d.asOf = realMonth(); upd(); save(path); })),
               el("label", null, "المبلغ المتبقي", amountInput("dr-" + d.id, d.remaining, function (v) { d.remaining = v; d.asOf = realMonth(); upd(); save(path); }))),
             foot);
         })) : el("p", { class: "empty", text: "لا توجد ديون أو التزامات مسجلة." }),
-        addBtn("إضافة التزام", list, function () { return { name: "", creditor: "", installment: 0, remaining: 0, due: "", asOf: realMonth() }; }, path, "dn-"),
+        addBtn("إضافة التزام", list, function () { return { name: "", creditor: "", total: 0, installment: 0, remaining: 0, asOf: realMonth() }; }, path, "dn-"),
         totalRow("مجموع الأقساط الشهرية", "dInst"), totalRow("مجموع المتبقي", "dRem"))];
   };
 
@@ -971,7 +1009,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("save-monthly", "الادخار الشهري", "الرقم والاسم والمبلغ الشهري", money(t.saving)),
         tile("save-withdraw", "السحوبات من الادخار", "ما سحبته من مدخراتك هذا الشهر", money(withdrawTotal(monthDoc()))),
-        tile("save-total", "إجمالي الادخار", "المدخر والمسحوب والرصيد", null)),
+        tile("save-total", "إجمالي الادخار", "المدخر والمسحوب والرصيد", null),
+        tile("save-sum", "ملخص الادخار", "نسبة الادخار والمتوسط والتحليل", null)),
       el("p", { class: "hint", text: "ادخار الشهر يُحسب من قائمة «الادخار الشهري»." })];
   };
 
@@ -1062,12 +1101,19 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   };
 
   VIEWS.invest = function () {
+    var list = S.investments.list;
+    return [header("الاستثمار", "sections", "الأقسام"),
+      el("div", { class: "grid" },
+        tile("invest-list", "المحفظة الاستثمارية", "المبلغ المستثمر والقيمة الحالية", money(sum(list, function (x) { return x.current; }))),
+        tile("invest-sum", "ملخص الاستثمار", "الربح والتوزيع والأداء", null))];
+  };
+  VIEWS["invest-list"] = function () {
     var list = S.investments.list, path = "settings/investments";
     function pl() { var inv = sum(list, function (x) { return x.invested; }), cur = sum(list, function (x) { return x.current; }); return { inv: inv, cur: cur, d: cur - inv }; }
     totalFns.ivIn = function () { return money(pl().inv); };
     totalFns.ivCur = function () { return money(pl().cur); };
     totalFns.ivPl = function () { var p = pl(); return (p.d < 0 ? "خسارة " : "ربح ") + money(Math.abs(p.d)) + (p.inv ? " (" + fmtPct.format(Math.abs(p.d) / p.inv) + ")" : ""); };
-    return [header("الاستثمار", "sections", "الأقسام"),
+    return [header("المحفظة الاستثمارية", "invest", "الاستثمار"),
       el("p", { class: "hint", text: "سجّل كل استثمار بالمبلغ الذي دفعته وقيمته الحالية لمعرفة الربح أو الخسارة." }),
       el("div", { class: "card" },
         list.length ? sortable(list, path, list.map(function (x, i) {
@@ -1093,6 +1139,13 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   };
 
   VIEWS.zakat = function () {
+    var c = zakatCalc();
+    return [header("الزكاة", "sections", "الأقسام"),
+      el("div", { class: "grid" },
+        tile("zakat-calc", "حساب الزكاة", "الأموال الزكوية والنصاب وموعد الحول", c.due ? money(c.due) : null),
+        tile("zakat-sum", "ملخص الزكاة", "الواجب والمُخرَج والموعد القادم", null))];
+  };
+  VIEWS["zakat-calc"] = function () {
     var z = S.zakat, path = "settings/zakat";
     function calc() {
       var assets = sum(z.assets, amt), net = Math.max(assets - (+z.debtsDue || 0), 0);
@@ -1105,7 +1158,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     totalFns.zNisab = function () { var c = calc(); return c.nisab ? money(c.nisab) : "أدخل سعر جرام الذهب"; };
     totalFns.zDue = function () { var c = calc(); if (!c.nisab) return "—"; return c.net >= c.nisab ? money(c.due) : "لم يبلغ المال النصاب"; };
     totalFns.zLeft = function () { var c = calc(); var d = c.due - (+z.paid || 0); return !c.due ? "—" : d > 0 ? "باقٍ " + money(d) : "أُخرجت كاملة"; };
-    return [header("الزكاة", "sections", "الأقسام"),
+    return [header("حساب الزكاة", "zakat", "الزكاة"),
       el("p", { class: "hint", text: "زكاة المال ربع العشر (٢٫٥٪) إذا بلغ صافي المال النصاب وحال عليه الحول الهجري. النصاب قيمة ٨٥ جرامًا من الذهب عيار ٢٤." }),
       el("div", { class: "card" },
         el("h3", { text: "الأموال الزكوية" }),
@@ -1181,9 +1234,16 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   };
 
   VIEWS.income = function () {
+    var t = totals();
+    return [header("الدخل والموارد", "sections", "الأقسام"), monthBar(),
+      el("div", { class: "grid" },
+        tile("income-list", "مصادر الدخل", "الراتب وأي دخل أو مورد إضافي", money(t.income)),
+        tile("income-sum", "ملخص الدخل", "المصادر والمقارنة والمتوسط", null))];
+  };
+  VIEWS["income-list"] = function () {
     var m = monthDoc(), path = "months/" + S.month, list = m.income;
     totalFns.inc = function () { return money(sum(list, amt)); };
-    return [header("الدخل والموارد", "sections", "الأقسام"), monthBar(),
+    return [header("مصادر الدخل", "income", "الدخل"), monthBar(),
       el("div", { class: "card" },
         list.length ? sortable(list, path, list.map(function (it, i) {
           return el("div", { class: "row" },
@@ -1227,6 +1287,134 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         el("h3", { text: "مواضع التوفير" }),
         tips.length ? el("ul", { class: "tips" }, tips.map(function (x) { return el("li", { text: x }); }))
           : el("p", { class: "hint", text: t.income ? "لا ملاحظات هذا الشهر." : "أدخل دخل الشهر والمصروفات لتظهر هنا الملاحظات." }))];
+  };
+
+  /* ---------- section summaries ---------- */
+  VIEWS["debts-sum"] = function () {
+    var list = S.debts.list, owed = S.debts.owed || [], t = totals();
+    var total = sum(list, function (d) { return +d.total || +d.remaining || 0; }), rem = sum(list, function (d) { return d.remaining; }), paid = Math.max(total - rem, 0);
+    var inst = sum(list, function (d) { return (+d.remaining || 0) > 0 ? d.installment : 0; });
+    var forYou = sum(owed, owedLeft), months = 0, lastName = "";
+    totalFns.owSum = function () { return money(forYou); };
+    var rows = list.map(function (d) {
+      var ml = +d.installment > 0 && +d.remaining > 0 ? Math.ceil(d.remaining / d.installment) : 0;
+      if (ml > months) { months = ml; lastName = d.name || d.creditor || ""; }
+      var tot = +d.total || +d.remaining || 0;
+      return el("tr", null, el("td", { text: d.name || d.creditor || "بلا اسم" }), el("td", { text: d.creditor || "—" }), el("td", { class: "num", text: fmt.format(tot) }),
+        el("td", { class: "num", text: fmt.format(+d.installment || 0) }), el("td", { class: "num", text: fmt.format(+d.remaining || 0) }),
+        el("td", { class: "num", text: tot ? fmtPct.format(Math.max(tot - (+d.remaining || 0), 0) / tot) : "—" }),
+        el("td", { text: ml ? monthName(addMonths(realMonth(), ml), true) : "—" }));
+    });
+    return [header("ملخص الديون", "debts", "الديون"),
+      kpiRow([["إجمالي الديون عليك", money(total)], ["المسدَّد منها", money(paid), "pos"], ["المتبقي", money(rem), rem ? "neg" : ""]]),
+      el("div", { class: "card" }, el("h3", { text: "التقدم في السداد" }),
+        el("div", { class: "track big" }, el("div", { class: "fill", style: "width:" + (total ? paid / total * 100 : 0).toFixed(1) + "%" })),
+        el("p", { class: "hint", text: total ? "سددت " + fmtPct.format(paid / total) + " من مجموع ديونك." : "أدخل المبلغ الإجمالي لكل دين لترى نسبة السداد." })),
+      el("div", { class: "card" }, el("h3", { text: "تحليل" }),
+        noteList([
+          "مجموع الأقساط الشهرية " + money(inst) + (t.income ? "، أي " + fmtPct.format(inst / t.income) + " من دخل الشهر." : "."),
+          t.income && inst / t.income > 0.33 ? "الأقساط تتجاوز ثلث الدخل، فتجنّب أي التزام جديد حتى تنخفض." : t.income && inst ? "نسبة الأقساط من الدخل في الحدود المقبولة (أقل من الثلث)." : null,
+          months ? "تنتهي كل الديون بعد نحو " + fmt.format(months) + " شهرًا، في " + monthName(addMonths(realMonth(), months), true) + (lastName ? "، وآخرها «" + lastName + "»." : ".") : null,
+          forYou ? "لك عند الآخرين " + money(forYou) + "، وصافي موقفك " + (forYou - rem >= 0 ? "لصالحك بـ " : "عليك بـ ") + money(Math.abs(forYou - rem)) + "." : null
+        ]) || el("p", { class: "empty", text: "لا توجد ديون مسجلة." })),
+      list.length ? el("div", { class: "card" }, el("h3", { text: "تفاصيل الديون عليك" }),
+        el("div", { class: "ctable-wrap" }, el("table", { class: "ctable" },
+          el("thead", null, el("tr", null, ["الدين", "الجهة", "الإجمالي", "القسط", "المتبقي", "سُدّد", "ينتهي"].map(function (h) { return el("th", { text: h }); }))),
+          el("tbody", null, rows))), el("p", { class: "hint", text: "المبالغ بالريال." })) : null,
+      owed.length ? el("div", { class: "card" }, el("h3", { text: "الديون لك" }),
+        shareRows(owed.map(function (x) { return { n: x.name, v: owedLeft(x) }; }), forYou),
+        totalRow("المتبقي تحصيله", "owSum")) : null];
+  };
+
+  VIEWS["income-sum"] = function () {
+    var keys = needMonths("income-sum", 6), head = [header("ملخص الدخل", "income", "الدخل"), monthBar()];
+    if (!keys) return head.concat(loadingCard());
+    var m = monthDoc(), t = totals(), prev = totals(addMonths(S.month, -1)).income;
+    var hist = keys.map(function (k) { return totals(k).income; }).filter(Boolean), avg = hist.length ? Math.round(sum(hist, function (v) { return v; }) / hist.length) : 0;
+    var ytd = 0; for (var k = S.month.slice(0, 4) + "-01"; monthDiff(k, S.month) >= 0; k = addMonths(k, 1)) ytd += S.months[k] ? totals(k).income : 0;
+    return head.concat(
+      kpiRow([["دخل الشهر", money(t.income)], ["متوسط آخر ٦ أشهر", money(avg)], ["منذ بداية السنة", money(ytd)]]),
+      el("div", { class: "card" }, el("h3", { text: "مصادر الدخل" }), shareRows(m.income.map(function (x) { return { n: x.name, v: +x.amount || 0 }; }), t.income)),
+      el("div", { class: "card" }, el("h3", { text: "تحليل" }), noteList([
+        diffText(t.income, prev, "دخل هذا الشهر"),
+        t.income ? "يذهب " + fmtPct.format(Math.min(t.spent / t.income, 9.99)) + " من الدخل للمصروفات والأقساط، و" + fmtPct.format(t.saving / t.income) + " للادخار." : "أدخل دخل الشهر لتظهر التحليلات.",
+        m.income.filter(function (x) { return +x.amount; }).length === 1 ? "دخلك من مصدر واحد؛ مصدر إضافي ولو صغير يزيد أمانك المالي." : null
+      ])));
+  };
+
+  VIEWS["exp-sum"] = function () {
+    var keys = needMonths("exp-sum", 2), head = [header("ملخص المصروفات", "expenses", "المصروفات"), monthBar()];
+    if (!keys) return head.concat(loadingCard());
+    var m = monthDoc(), t = totals(), exp = t.actFixed + t.unsched + t.custom, pt = totals(addMonths(S.month, -1)), prevExp = pt.actFixed + pt.unsched + pt.custom;
+    var parts = [secOn("actual") && { n: secName("actual"), v: t.actFixed }, secOn("unscheduled") && { n: secName("unscheduled"), v: t.unsched }]
+      .concat(customSecs().filter(function (c) { return secOn(c.id); }).map(function (c) { return { n: secName(c.id), v: sumOne(c.id) }; })).filter(Boolean);
+    var items = [];
+    if (secOn("actual")) S.estimates.fixed.forEach(function (it) { items.push({ n: it.name, v: +(m.actual[it.id] || 0) }); });
+    if (secOn("unscheduled")) m.unscheduled.forEach(function (it) { items.push({ n: it.name || it.category, v: +it.amount || 0 }); });
+    customSecs().filter(function (c) { return secOn(c.id); }).forEach(function (c) { (c.items || []).forEach(function (it) { items.push({ n: it.name, v: +(m.actual[it.id] || 0) }); }); });
+    var top = items.filter(function (x) { return x.v; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 5);
+    return head.concat(
+      kpiRow([["مصروفات الشهر", money(exp)], ["من الدخل", t.income ? fmtPct.format(exp / t.income) : "—"], ["الشهر السابق", money(prevExp)]]),
+      el("div", { class: "card" }, el("h3", { text: "حسب القسم" }), shareRows(parts, exp)),
+      el("div", { class: "card" }, el("h3", { text: "أكبر خمسة بنود" }), shareRows(top, exp)),
+      el("div", { class: "card" }, el("h3", { text: "تحليل" }), noteList([
+        diffText(exp, prevExp, "مصروفات هذا الشهر"),
+        t.income && exp / t.income > 0.8 ? "المصروفات تتجاوز ٨٠٪ من الدخل، فراجع أكبر البنود أعلاه." : null,
+        t.income && t.unsched / t.income > 0.1 ? secName("unscheduled") + " تجاوزت ١٠٪ من الدخل." : null,
+        top[0] ? "أكبر بند هذا الشهر «" + (top[0].n || "بلا اسم") + "» بمبلغ " + money(top[0].v) + "." : null
+      ])));
+  };
+
+  VIEWS["save-sum"] = function () {
+    var keys = needMonths("save-sum", 12), head = [header("ملخص الادخار", "savings", "الادخار"), monthBar()];
+    if (!keys) return head.concat(loadingCard());
+    var t = totals(), list = saveItems(), m = monthDoc();
+    var hist = keys.map(function (k) { return { k: k, v: S.months[k] ? totals(k).saving : 0, w: S.months[k] ? withdrawTotal(S.months[k]) : 0 }; });
+    var withData = hist.filter(function (h) { return h.v; }), avg = withData.length ? Math.round(sum(withData, function (h) { return h.v; }) / withData.length) : 0;
+    var best = withData.slice().sort(function (a, b) { return b.v - a.v; })[0], out12 = sum(hist, function (h) { return h.w; });
+    var streak = 0; for (var i = hist.length - 1; i >= 0 && hist[i].v; i--) streak++;
+    return head.concat(
+      kpiRow([["ادخار الشهر", money(t.saving)], ["من الدخل", t.income ? fmtPct.format(t.saving / t.income) : "—"], ["متوسط شهري", money(avg)]]),
+      el("div", { class: "card" }, el("h3", { text: "توزيع ادخار الشهر" }), shareRows(list.map(function (it, n) { return { n: fmt.format(n + 1) + ". " + (it.name || "بلا اسم"), v: savedOf(m, it.id) }; }), t.saving)),
+      el("div", { class: "card" }, el("h3", { text: "تحليل آخر ١٢ شهرًا" }), noteList([
+        diffText(t.saving, totals(addMonths(S.month, -1)).saving, "ادخار هذا الشهر"),
+        best ? "أفضل شهر في الادخار " + monthName(best.k, true) + " بمبلغ " + money(best.v) + "." : null,
+        streak > 1 ? "ادخرت " + fmt.format(streak) + " أشهر متتالية حتى هذا الشهر، استمر." : null,
+        out12 ? "سحبت من مدخراتك " + money(out12) + " خلال آخر ١٢ شهرًا." : null,
+        t.income && t.saving / t.income < 0.1 ? "الادخار أقل من ١٠٪ من الدخل؛ جرّب تحويل المبلغ أول الشهر قبل الصرف." : null
+      ])));
+  };
+
+  VIEWS["invest-sum"] = function () {
+    var list = S.investments.list;
+    var inv = sum(list, function (x) { return x.invested; }), cur = sum(list, function (x) { return x.current; }), d = cur - inv;
+    var byType = INVEST_TYPES.map(function (ty) { return { n: ty, v: sum(list.filter(function (x) { return (x.type || INVEST_TYPES[0]) === ty; }), function (x) { return x.current; }) }; });
+    var perf = list.filter(function (x) { return +x.invested; }).map(function (x) { return { n: x.name || x.type, r: ((+x.current || 0) - x.invested) / x.invested }; }).sort(function (a, b) { return b.r - a.r; });
+    return [header("ملخص الاستثمار", "invest", "الاستثمار"),
+      kpiRow([["المستثمر", money(inv)], ["القيمة الحالية", money(cur)], [d < 0 ? "الخسارة" : "الربح", money(Math.abs(d)) + (inv ? " (" + fmtPct.format(Math.abs(d) / inv) + ")" : ""), d < 0 ? "neg" : "pos"]]),
+      el("div", { class: "card" }, el("h3", { text: "التوزيع حسب النوع" }), shareRows(byType, cur)),
+      el("div", { class: "card" }, el("h3", { text: "تحليل" }), noteList([
+        perf[0] ? "الأفضل أداءً «" + perf[0].n + "» بعائد " + fmtPct.format(perf[0].r) + "." : null,
+        perf.length > 1 && perf[perf.length - 1].r < 0 ? "الأضعف «" + perf[perf.length - 1].n + "» بخسارة " + fmtPct.format(-perf[perf.length - 1].r) + "." : null,
+        cur && Math.max.apply(null, byType.map(function (b) { return b.v; })) / cur > 0.6 ? "أكثر من ٦٠٪ من محفظتك في نوع واحد؛ التنويع يقلل المخاطر." : null
+      ]) || el("p", { class: "empty", text: "لا توجد استثمارات مسجلة." }))];
+  };
+
+  function zakatCalc() {
+    var z = S.zakat, assets = sum(z.assets, amt), net = Math.max(assets - (+z.debtsDue || 0), 0), nisab = (+z.goldPrice || 0) * 85;
+    return { assets: assets, net: net, nisab: nisab, due: nisab && net >= nisab ? net * 0.025 : 0, paid: +z.paid || 0 };
+  }
+  VIEWS["zakat-sum"] = function () {
+    var c = zakatCalc(), h = nextHawl(), left = Math.max(c.due - c.paid, 0);
+    return [header("ملخص الزكاة", "zakat", "الزكاة"),
+      kpiRow([["صافي المال", money(c.net)], ["الزكاة الواجبة", c.nisab ? money(c.due) : "—"], ["المتبقي إخراجه", c.due ? money(left) : "—", left ? "neg" : "pos"]]),
+      el("div", { class: "card" }, el("h3", { text: "الأموال الزكوية" }), shareRows(S.zakat.assets.map(function (a) { return { n: a.name, v: +a.amount || 0 }; }), c.assets)),
+      el("div", { class: "card" }, el("h3", { text: "تحليل" }), noteList([
+        !c.nisab ? "أدخل سعر جرام الذهب في «حساب الزكاة» لمعرفة النصاب." : c.net >= c.nisab ? "بلغ مالك النصاب (" + money(c.nisab) + ")، والزكاة ٢٫٥٪ من صافي المال." : "لم يبلغ صافي مالك النصاب (" + money(c.nisab) + ")، فلا زكاة عليه الآن.",
+        c.due ? (left ? "أخرجت " + money(c.paid) + " وبقي " + money(left) + "." : "أخرجت الزكاة كاملة، تقبّل الله.") : null,
+        h ? (h.days === 0 ? "اليوم موعد حولان الحول." : "حولان الحول القادم بعد " + daysText(h.days) + ".") : "اختر يوم الحول وشهره في «حساب الزكاة» ليظهر الموعد."
+      ])),
+      el("p", { class: "hint", text: "الحساب تقديري، وفي الحالات الخاصة يُرجع إلى أهل العلم." })];
   };
 
   /* ---------- budget chart over a chosen period ---------- */
