@@ -56,11 +56,8 @@ button, input, select { font: inherit; color: inherit; }
 .home h1 { font-size: clamp(2.8rem, 13vw, 5rem); font-weight: 700; line-height: 1.25; color: var(--ink); letter-spacing: .01em; }
 .enter { display: inline-flex; align-items: center; gap: 12px; border: 1px solid var(--gold); background: var(--gold); color: var(--bg-deep); cursor: pointer; font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; padding: 12px 32px; border-radius: 6px; box-shadow: 0 0 0 6px var(--gold-soft); }
 .enter svg { width: 24px; height: 24px; }
-.quote { margin-top: 32px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; justify-items: center; gap: 2px; text-align: center; }
-.quote { width: 100%; grid-template-columns: minmax(0, 1fr); }
-.quote p { margin: 0; width: 100%; color: var(--ink); font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; line-height: 1.8; white-space: nowrap; }
-.quote p.wrap { white-space: normal; text-wrap: balance; }
-.quote span { color: var(--gold); font-size: .85rem; font-weight: 700; font-family: var(--font-display); }
+.quote { position: relative; overflow: hidden; height: 3.1rem; margin: 0 0 22px; border-block: 1px solid var(--gold); background: var(--gold-soft); border-radius: 4px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.quote p { position: absolute; top: 0; left: 0; right: auto; margin: 0; height: 100%; display: flex; align-items: center; white-space: nowrap; color: var(--ink); font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; will-change: transform; transform: translateX(-100%); }
 .gate, .pin-form { display: contents; }
 .gate > p { grid-row: 2; }
 .home .enter { grid-row: 2; }
@@ -168,6 +165,9 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 <body>
 <script>document.documentElement.setAttribute("dir", "rtl"); document.documentElement.setAttribute("lang", "ar");</script>
 <div class="wrap" dir="rtl" lang="ar">
+  <div class="quote" aria-label="اقتباس">
+    <p id="quoteText"></p>
+  </div>
   <main>
     <section class="home" id="home">
       <div class="title">
@@ -181,9 +181,6 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 
     <section class="inside" id="view" hidden></section>
   </main>
-  <footer class="quote" aria-label="اقتباس">
-    <p id="quoteText"></p>
-  </footer>
 </div>
 
 <script>
@@ -390,7 +387,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
       enterButton(), el("div", { class: "pin-box" }, pinField("pinInput", "الرقم السري"), msg)));
   }
 
-  /* ---------- quotes (bottom centre of every page) ---------- */
+  /* ---------- quotes (moving band at the top of every page) ---------- */
   var QUOTES = {"money": [["المال خادم جيد، لكنه سيد فاسد.", "فرانسيس بيكون"], ["ليس المهم كم من المال تجني، بل كم من المال تدخر، وكيف يعمل هذا المال من أجلك.", "روبرت كيوساكي"], ["الثروة هي القدرة على تجربة الحياة بالكامل.", "هنري ديفيد ثورو"], ["الشخص الذي لا يعرف أين يذهب ماله، سيجد نفسه دائماً يتساءل أين ذهب.", ""], ["الفقر ليس نقصاً في المال، بل هو غياب العقلية المنتجة.", ""], ["إذا كنت تعمل من أجل المال، فأنت تعطي القوة لصاحب العمل. إذا كان المال يعمل من أجلك، فأنت من يمتلك القوة.", ""], ["الثروة الحقيقية هي ما تملكه عندما تفقد كل أموالك.", ""], ["الاستثمار في المعرفة يدفع دائماً أفضل الفوائد.", "بنجامين فرانكلين"], ["الأغنياء يستثمرون في الوقت، والفقراء يستثمرون في المال.", ""], ["النجاح المالي هو عبارة عن ٢٠٪ معرفة و٨٠٪ سلوك وانضباط.", "ديف رامزي"]], "saving": [["لا تدخر ما تبقى بعد الإنفاق، بل أنفق ما تبقى بعد الادخار.", "وارن بافيت"], ["كل درهم تدخره هو جندي يعمل في جيش ثروتك المستقبلية.", ""], ["الادخار هو فن العيش بأقل مما تكسب لتتمكن من العيش بأكثر مما كنت تتخيل لاحقاً.", ""], ["الحرمان المؤقت من الكماليات هو الثمن الذي تدفعه مقابل الحرية الأبدية.", ""], ["الرجل الذي يشتري ما لا يحتاجه، يسرق نفسه.", "مثل سويدي"], ["حتى أصغر قطرات الماء يمكنها ملء الحوض، وكذلك أصغر المدخرات.", ""], ["الادخار لا يعني البخل، بل يعني الذكاء في إدارة الموارد.", ""], ["الفرق بين الغني والفقير هو أن الغني يدخر ثم ينفق، والفقير ينفق ثم يحاول الادخار.", ""], ["كن حذراً من النفقات الصغيرة؛ فتسريب بسيط يمكن أن يغرق سفينة كبيرة.", "بنجامين فرانكلين"], ["الادخار هو تأجيل المتعة العابرة من أجل أمان دائم.", ""]], "debt": [["الدين هو الوحش الذي يأكل مستقبلك قبل أن يصل إليك.", ""], ["من يقترض، يبيع حريته.", "أندرو كارنيجي"], ["الديون هي العبيد الجدد في العصر الحديث.", ""], ["أفضل وقت لسداد ديونك كان بالأمس، ثاني أفضل وقت هو الآن.", ""], ["لا تشترِ شيئاً لتبهر أشخاصاً لا تحبهم بأموال لا تملكها.", ""], ["القروض تجعل الحياة تبدو سهلة في البداية، لكنها تجعلها مستحيلة في النهاية.", ""], ["العيش بدون ديون هو أرقى أنواع الرفاهية.", ""], ["الفائدة البنكية على الديون لا تنام، لا تمرض، ولا تأخذ عطلة؛ إنها تلتهمك بصمت.", ""], ["السعادة لا تُشترى ببطاقة ائتمان.", ""], ["أن تنام جائعاً أفضل من أن تستيقظ مديوناً.", "مثل عربي قديم"]], "invest": [["السوق مصمم لنقل الأموال من الشخص غير الصبور إلى الشخص الصبور.", "وارن بافيت"], ["أفضل وقت لزراعة شجرة كان منذ ٢٠ عاماً، ثاني أفضل وقت هو الآن.", "مثل صيني"], ["لا تضع كل بيضك في سلة واحدة.", ""], ["الاستثمار هو عملية تحويل الأموال من شخص يريد المتعة الفورية إلى شخص يريد الأمان المستقبلي.", ""], ["الثروة لا تأتي من الدخل العالي، بل من الأصول التي تدر دخلاً.", ""], ["الخطر الحقيقي هو عدم المخاطرة بأي شيء.", ""], ["المستثمر الذكي هو من يشتري عندما يخاف الجميع، ويبيع عندما يطمع الجميع.", ""], ["المال هو بذرة، إذا زرعتها في أرض الاستثمار أثمرت غابة من الثروة.", ""], ["الفائدة المركبة هي الأعجوبة الثامنة في العالم.", "ألبرت أينشتاين"], ["الاستثمار الناجح يتطلب وقتاً وانضباطاً وصبراً.", ""]], "life": [["المال لا يغير الناس، بل يكشف حقيقتهم فقط.", ""], ["أن تكون غنياً هو أن تملك المال، أما أن تكون ثرياً فهو أن تملك الوقت.", ""], ["الفقير ليس من لا يملك قرشاً، بل من لا يملك حلماً.", ""], ["المال يعطيك خيارات، والخيارات تعطيك الحرية.", ""], ["اجعل هدفك هو الاستقلال المالي، وليس مجرد جمع الأرقام.", ""], ["لا تدع كسب العيش ينسيك بناء حياة.", ""], ["العطاء هو جزء من الثقافة المالية الناجحة؛ المال الذي يخرج بصدق يعود ببركة.", ""], ["التخطيط المالي هو الفرق بين الحلم والواقع.", ""], ["كن سيد مالك، ولا تسمح له بأن يصبح سيدك.", ""], ["الرحلة نحو الثراء تبدأ بخطوة واحدة: قرار بأنك تستحق حياة أفضل.", ""]]};
   var QUOTE_FOR = { savings: ["saving"], debts: ["debt"], invest: ["invest"], zakat: ["life"], expenses: ["saving", "money"], estimated: ["saving", "money"], "est-fixed": ["saving"], "est-variable": ["saving"], actual: ["money"], "act-fixed": ["money"], "act-variable": ["money"], unscheduled: ["saving"], income: ["money"], summary: ["money", "life"], plan: ["money"], overview: ["money", "life"] };
   var lastQuote = "";
@@ -401,18 +398,21 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     do { q = pool[Math.floor(Math.random() * pool.length)]; } while (pool.length > 1 && q[0] === lastQuote);
     lastQuote = q[0];
     $("quoteText").textContent = "«" + q[0] + "»";
-
-    fitQuote();
+    runQuote(view);
   }
-  /* shrink the quote until it fits on one line; very long ones wrap at the smallest size */
-  function fitQuote() {
-    var p = $("quoteText"), size = 1.05;
-    p.classList.remove("wrap");
-    p.style.fontSize = size + "rem";
-    while (p.scrollWidth > p.clientWidth + 1 && size > 0.72) { size -= 0.03; p.style.fontSize = size.toFixed(2) + "rem"; }
-    if (p.scrollWidth > p.clientWidth + 1) p.classList.add("wrap");
+  /* slide the quote from left to right (Arabic ticker direction), then bring the next one */
+  var quoteAnim = null;
+  function runQuote(view) {
+    var p = $("quoteText"), band = p.parentNode;
+    if (quoteAnim) { quoteAnim.onfinish = null; quoteAnim.cancel(); quoteAnim = null; }
+    var w = p.offsetWidth, cw = band.clientWidth, x0 = Math.round(cw * .45) - w;
+    if (!p.animate || !cw) return;
+    quoteAnim = p.animate([{ transform: "translateX(" + x0 + "px)" }, { transform: "translateX(" + cw + "px)" }],
+      { duration: (cw - x0) / 55 * 1000, easing: "linear", fill: "forwards" });
+    quoteAnim.onfinish = function () { showQuote(current || view); };
   }
-  window.addEventListener("resize", function () { if ($("quoteText").textContent) fitQuote(); });
+  var quoteResize;
+  window.addEventListener("resize", function () { clearTimeout(quoteResize); quoteResize = setTimeout(function () { if (quoteAnim) runQuote(current); }, 300); });
 
   /* ---------- calculations ---------- */
   function sum(arr, f) { return arr.reduce(function (a, x) { var v = +f(x); return a + (isFinite(v) ? v : 0); }, 0); }
