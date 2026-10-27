@@ -1270,7 +1270,19 @@ body.has-fab .wrap { padding-bottom: 100px; }
       text: last ? "حان موعد النسخة الاحتياطية. آخر نسخة كانت قبل " + daysText(Math.max(Math.floor((Date.now() - new Date(last).getTime()) / 864e5), 1)) + "." : "حان موعد النسخة الاحتياطية. احفظ نسخة الآن حتى لا تضيع بياناتك." };
   });
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
-  if ("serviceWorker" in navigator && location.protocol === "https:") { try { navigator.serviceWorker.register("sw.js"); } catch (e) {} }
+  /* look for a new version on every open, and reload once it has taken over */
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    try {
+      var hadController = !!navigator.serviceWorker.controller, reloaded = false;
+      navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(function (reg) {
+        document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") reg.update().catch(function () {}); });
+      }).catch(function () {});
+      navigator.serviceWorker.addEventListener("controllerchange", function () {
+        if (!hadController || reloaded || editing()) { hadController = true; return; }
+        reloaded = true; flushAll(); location.reload();
+      });
+    } catch (e) {}
+  }
 
   /* ---------- routing ---------- */
   function refreshTotals() {
