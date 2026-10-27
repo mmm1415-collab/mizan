@@ -289,9 +289,9 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   var pad = function (n) { return String(n).padStart(2, "0"); };
   var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
   function parseAmount(v) {
-    var s = String(v == null ? "" : v).replace(/[٠-٩]/g, function (d) { return "٠١٢٣٤٥٦٧٨٩".indexOf(d); }).replace(/[۰-۹]/g, function (d) { return "۰۱۲۳۴۵۶۷۸۹".indexOf(d); }).replace(/[^\d.,٫٬،]/g, "");
-    /* the last separator followed by one or two digits is the halala point (the iPhone keypad may type "," or "٫"); every other separator groups thousands */
-    var m = s.match(/^(.*)[.,٫٬،](\d{1,2})$/);
+    var s = String(v == null ? "" : v).replace(/[٠-٩]/g, function (d) { return "٠١٢٣٤٥٦٧٨٩".indexOf(d); }).replace(/[۰-۹]/g, function (d) { return "۰۱۲۳۴۵۶۷۸۹".indexOf(d); }).replace(/\s+/g, "");
+    /* the last separator followed by one or two digits is the halala point (any mark the keypad types: "." "," "٫" …); every other separator groups thousands */
+    var m = s.match(/^(.*)\D+(\d{1,2})$/);
     s = m ? m[1].replace(/\D/g, "") + "." + m[2] : s.replace(/\D/g, "");
     var n = parseFloat(s);
     return isFinite(n) ? Math.round(n * 100) / 100 : 0;
@@ -857,7 +857,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice()];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 30" })];
   };
   VIEWS.budget = function () {
     var t = totals();
