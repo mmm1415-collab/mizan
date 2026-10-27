@@ -602,9 +602,9 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   function savedOf(m, id) { return m.saved && id in m.saved ? +m.saved[id] || 0 : id === "s1" ? +m.savingDeposit || 0 : 0; }
   function setSaved(m, id, v) { if (!m.saved) { m.saved = { s1: +m.savingDeposit || 0 }; m.savingDeposit = 0; } m.saved[id] = v; }
   function withdrawTotal(m) { return sum(m.withdrawals || [], amt); }
-  /* where a payment is deducted from: the salary or the pension */
-  var SRC_OPTS = [["", "الجهة"], ["salary", "من الراتب"], ["pension", "من التقاعد"]];
-  var SRC_NAME = { salary: "الراتب", pension: "التقاعد", "": "غير محددة" };
+  /* where a payment is deducted from: the salary or the extra income (stored as "pension" from the first version) */
+  var SRC_OPTS = [["", "الجهة"], ["salary", "من الراتب"], ["pension", "من الدخل الإضافي"]];
+  var SRC_NAME = { salary: "الراتب", pension: "الدخل الإضافي", "": "غير محددة" };
   function srcSelect(id, it, path) {
     return el("select", { id: id, class: "src-sel", "aria-label": "جهة الاستقطاع", disabled: S.readOnly ? "" : null, onchange: function (e) { it.src = e.target.value; save(path); } },
       SRC_OPTS.map(function (o) { var n = el("option", { value: o[0], text: o[1] }); if ((it.src || "") === o[0]) n.selected = true; return n; }));
@@ -921,7 +921,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 40" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 41" })];
   };
   VIEWS.budget = function () {
     var t = totals();
