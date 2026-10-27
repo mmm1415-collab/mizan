@@ -301,7 +301,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         .concat(items("v", ["البقالة والتموين", "الوقود والمواصلات", "المطاعم والقهوة", "الملابس", "الصحة والأدوية", "الترفيه والنزهات", "الهدايا والمناسبات", "الصيانة المنزلية"])),
       variable: []
     },
-    debts: { list: [] },
+    debts: { list: [], owed: [] },
     savings: { items: [{ id: "s1", name: "الادخار الشهري" }], goals: [{ id: "g1", name: "صندوق الطوارئ", target: 0, saved: 0 }, { id: "g2", name: "الإجازة السنوية", target: 0, saved: 0 }] },
     investments: { list: [] },
     sections: { names: {}, hidden: {}, custom: [] },
@@ -516,7 +516,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 
   /* ---------- quotes (moving band at the top of every page) ---------- */
   var QUOTES = {"money": [["المال خادم جيد، لكنه سيد فاسد.", "فرانسيس بيكون"], ["ليس المهم كم من المال تجني، بل كم من المال تدخر، وكيف يعمل هذا المال من أجلك.", "روبرت كيوساكي"], ["الثروة هي القدرة على تجربة الحياة بالكامل.", "هنري ديفيد ثورو"], ["الشخص الذي لا يعرف أين يذهب ماله، سيجد نفسه دائماً يتساءل أين ذهب.", ""], ["الفقر ليس نقصاً في المال، بل هو غياب العقلية المنتجة.", ""], ["إذا كنت تعمل من أجل المال، فأنت تعطي القوة لصاحب العمل. إذا كان المال يعمل من أجلك، فأنت من يمتلك القوة.", ""], ["الثروة الحقيقية هي ما تملكه عندما تفقد كل أموالك.", ""], ["الاستثمار في المعرفة يدفع دائماً أفضل الفوائد.", "بنجامين فرانكلين"], ["الأغنياء يستثمرون في الوقت، والفقراء يستثمرون في المال.", ""], ["النجاح المالي هو عبارة عن ٢٠٪ معرفة و٨٠٪ سلوك وانضباط.", "ديف رامزي"]], "saving": [["لا تدخر ما تبقى بعد الإنفاق، بل أنفق ما تبقى بعد الادخار.", "وارن بافيت"], ["كل درهم تدخره هو جندي يعمل في جيش ثروتك المستقبلية.", ""], ["الادخار هو فن العيش بأقل مما تكسب لتتمكن من العيش بأكثر مما كنت تتخيل لاحقاً.", ""], ["الحرمان المؤقت من الكماليات هو الثمن الذي تدفعه مقابل الحرية الأبدية.", ""], ["الرجل الذي يشتري ما لا يحتاجه، يسرق نفسه.", "مثل سويدي"], ["حتى أصغر قطرات الماء يمكنها ملء الحوض، وكذلك أصغر المدخرات.", ""], ["الادخار لا يعني البخل، بل يعني الذكاء في إدارة الموارد.", ""], ["الفرق بين الغني والفقير هو أن الغني يدخر ثم ينفق، والفقير ينفق ثم يحاول الادخار.", ""], ["كن حذراً من النفقات الصغيرة؛ فتسريب بسيط يمكن أن يغرق سفينة كبيرة.", "بنجامين فرانكلين"], ["الادخار هو تأجيل المتعة العابرة من أجل أمان دائم.", ""]], "debt": [["الدين هو الوحش الذي يأكل مستقبلك قبل أن يصل إليك.", ""], ["من يقترض، يبيع حريته.", "أندرو كارنيجي"], ["الديون هي العبيد الجدد في العصر الحديث.", ""], ["أفضل وقت لسداد ديونك كان بالأمس، ثاني أفضل وقت هو الآن.", ""], ["لا تشترِ شيئاً لتبهر أشخاصاً لا تحبهم بأموال لا تملكها.", ""], ["القروض تجعل الحياة تبدو سهلة في البداية، لكنها تجعلها مستحيلة في النهاية.", ""], ["العيش بدون ديون هو أرقى أنواع الرفاهية.", ""], ["الفائدة البنكية على الديون لا تنام، لا تمرض، ولا تأخذ عطلة؛ إنها تلتهمك بصمت.", ""], ["السعادة لا تُشترى ببطاقة ائتمان.", ""], ["أن تنام جائعاً أفضل من أن تستيقظ مديوناً.", "مثل عربي قديم"]], "invest": [["السوق مصمم لنقل الأموال من الشخص غير الصبور إلى الشخص الصبور.", "وارن بافيت"], ["أفضل وقت لزراعة شجرة كان منذ ٢٠ عاماً، ثاني أفضل وقت هو الآن.", "مثل صيني"], ["لا تضع كل بيضك في سلة واحدة.", ""], ["الاستثمار هو عملية تحويل الأموال من شخص يريد المتعة الفورية إلى شخص يريد الأمان المستقبلي.", ""], ["الثروة لا تأتي من الدخل العالي، بل من الأصول التي تدر دخلاً.", ""], ["الخطر الحقيقي هو عدم المخاطرة بأي شيء.", ""], ["المستثمر الذكي هو من يشتري عندما يخاف الجميع، ويبيع عندما يطمع الجميع.", ""], ["المال هو بذرة، إذا زرعتها في أرض الاستثمار أثمرت غابة من الثروة.", ""], ["الفائدة المركبة هي الأعجوبة الثامنة في العالم.", "ألبرت أينشتاين"], ["الاستثمار الناجح يتطلب وقتاً وانضباطاً وصبراً.", ""]], "life": [["المال لا يغير الناس، بل يكشف حقيقتهم فقط.", ""], ["أن تكون غنياً هو أن تملك المال، أما أن تكون ثرياً فهو أن تملك الوقت.", ""], ["الفقير ليس من لا يملك قرشاً، بل من لا يملك حلماً.", ""], ["المال يعطيك خيارات، والخيارات تعطيك الحرية.", ""], ["اجعل هدفك هو الاستقلال المالي، وليس مجرد جمع الأرقام.", ""], ["لا تدع كسب العيش ينسيك بناء حياة.", ""], ["العطاء هو جزء من الثقافة المالية الناجحة؛ المال الذي يخرج بصدق يعود ببركة.", ""], ["التخطيط المالي هو الفرق بين الحلم والواقع.", ""], ["كن سيد مالك، ولا تسمح له بأن يصبح سيدك.", ""], ["الرحلة نحو الثراء تبدأ بخطوة واحدة: قرار بأنك تستحق حياة أفضل.", ""]]};
-  var QUOTE_FOR = { savings: ["saving"], "save-monthly": ["saving"], "save-total": ["saving"], "save-withdraw": ["saving"], debts: ["debt"], invest: ["invest"], zakat: ["life"], expenses: ["saving", "money"], actual: ["money"], unscheduled: ["saving"], chart: ["money", "invest"], income: ["money"], summary: ["money", "life"], overview: ["money", "life"] };
+  var QUOTE_FOR = { savings: ["saving"], "save-monthly": ["saving"], "save-total": ["saving"], "save-withdraw": ["saving"], debts: ["debt"], "debts-owe": ["debt"], "debts-due": ["debt", "life"], invest: ["invest"], zakat: ["life"], expenses: ["saving", "money"], actual: ["money"], unscheduled: ["saving"], chart: ["money", "invest"], income: ["money"], summary: ["money", "life"], overview: ["money", "life"] };
   var lastQuote = "";
   function showQuote(view) {
     var groups = QUOTE_FOR[view] || ["money", "life"], pool = [];
@@ -828,7 +828,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("income", "الدخل والموارد", "الراتب وأي دخل أو مورد إضافي", money(t.income)),
         tile("expenses", "المصروفات", ["actual", "unscheduled"].concat(customSecs("expenses").map(function (c) { return c.id; })).filter(secOn).map(secName).join(" · ") || "—", money(t.actFixed + t.actVar + t.unsched + t.custom)),
-        tile("debts", "الديون والالتزامات", "الأقساط الشهرية", money(t.debts)),
+        tile("debts", "الديون والالتزامات", "الديون عليك · الديون لك", money(t.debts)),
         tile("savings", "الادخار", "إيداع الشهر وأهداف الادخار", money(t.saving)),
         tile("invest", "الاستثمار", "المحفظة والربح والخسارة", money(sum(S.investments.list, function (x) { return x.current; }))),
         tile("zakat", "الزكاة", "الأموال الزكوية والنصاب والواجب", null),
@@ -895,11 +895,52 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         totalRow("مجموع الشهر", "un"))];
   };
 
+  function owedLeft(x) { return Math.max((+x.amount || 0) - (+x.paid || 0), 0); }
   VIEWS.debts = function () {
+    var t = totals(), owed = S.debts.owed || [];
+    return [header("الديون والالتزامات", "sections", "الأقسام"),
+      el("div", { class: "grid" },
+        tile("debts-owe", "الديون عليك", "القروض والأقساط · قسط الشهر", money(t.debts)),
+        tile("debts-due", "الديون لك", "ما أقرضته للآخرين · المتبقي تحصيله", money(sum(owed, owedLeft))))];
+  };
+
+  VIEWS["debts-due"] = function () {
+    if (!S.debts.owed) S.debts.owed = [];
+    var list = S.debts.owed, path = "settings/debts";
+    totalFns.owA = function () { return money(sum(list, function (x) { return x.amount; })); };
+    totalFns.owL = function () { return money(sum(list, owedLeft)); };
+    return [header("الديون لك", "debts", "الديون"),
+      el("p", { class: "hint", text: "المبالغ التي أقرضتها لغيرك. سجّل ما يُردّ إليك أولًا بأول ليظهر المتبقي." }),
+      el("div", { class: "card" },
+        list.length ? sortable(list, path, list.map(function (x, i) {
+          var foot = el("div", { class: "item-foot" });
+          function upd() {
+            var l = owedLeft(x);
+            foot.textContent = !x.amount ? "أدخل مبلغ الدين" : l ? "المتبقي تحصيله " + money(l) : "سُدّد كاملًا";
+            foot.className = "item-foot " + (x.amount && !l ? "pos" : "");
+          }
+          upd();
+          return el("div", { class: "item" },
+            el("div", { class: "item-head" },
+              el("label", { class: "why" }, "اسم المدين", textInput("on-" + x.id, x.name, function (v) { x.name = v; save(path); }, "اسم المدين", "من اقترض منك")),
+              delBtn(x.name, remover(list, i, path))),
+            el("div", { class: "subform" },
+              el("label", null, "مبلغ الدين", amountInput("oa-" + x.id, x.amount, function (v) { x.amount = v; upd(); save(path); })),
+              el("label", null, "ما سُدّد منه", amountInput("op-" + x.id, x.paid, function (v) { x.paid = v; upd(); save(path); })),
+              el("label", null, "موعد السداد", textInput("od-" + x.id, x.due, function (v) { x.due = v; save(path); }, "موعد السداد", "مثال: نهاية رمضان")),
+              el("label", null, "ملاحظة", textInput("ox-" + x.id, x.note, function (v) { x.note = v; save(path); }, "ملاحظة", "اختياري"))),
+            foot);
+        })) : el("p", { class: "empty", text: "لا توجد ديون لك مسجلة." }),
+        addBtn("إضافة دين لك", list, function () { return { name: "", amount: 0, paid: 0, due: "", note: "" }; }, path, "on-"),
+        totalRow("مجموع الديون لك", "owA"), totalRow("المتبقي تحصيله", "owL")),
+      el("p", { class: "hint", text: "الديون المرجوّ سدادها تدخل في حساب الزكاة؛ أضف المتبقي منها في قسم الزكاة." })];
+  };
+
+  VIEWS["debts-owe"] = function () {
     var list = S.debts.list, path = "settings/debts";
     totalFns.dInst = function () { return money(sum(list, function (d) { return (+d.remaining || 0) > 0 ? d.installment : 0; })); };
     totalFns.dRem = function () { return money(sum(list, function (d) { return d.remaining; })); };
-    return [header("الديون والالتزامات", "sections", "الأقسام"),
+    return [header("الديون عليك", "debts", "الديون"),
       el("p", { class: "hint", text: "القروض والأقساط والالتزامات الشهرية. يُحسب القسط ضمن مصروفات كل شهر، ويُخصم من المبلغ المتبقي تلقائيًا في بداية كل شهر." }),
       el("div", { class: "card" },
         list.length ? sortable(list, path, list.map(function (d, i) {
