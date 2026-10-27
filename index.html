@@ -140,6 +140,9 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 .alert-wrap { position: relative; }
 .alert-wrap .alert { padding-inline: 40px; }
 .alert-x { position: absolute; top: 50%; left: 4px; transform: translateY(-50%); }
+.sec-row { grid-template-columns: minmax(0, 1fr) auto; }
+.add.danger { color: var(--bad); border-color: var(--bad); }
+.restore { display: grid; gap: 8px; justify-items: center; }
 .copy-prev { display: grid; justify-items: center; gap: 6px; }
 .period { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .period label { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); }
@@ -287,6 +290,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     debts: { list: [] },
     savings: { goals: [{ id: "g1", name: "صندوق الطوارئ", target: 0, saved: 0 }, { id: "g2", name: "الإجازة السنوية", target: 0, saved: 0 }] },
     investments: { list: [] },
+    sections: { names: {}, hidden: {} },
     zakat: { assets: items("z", ["النقد في الحسابات البنكية", "النقد في اليد", "الذهب والفضة (بقيمتها)", "الأسهم والصناديق بنية المتاجرة", "عروض التجارة", "ديون لك مرجوّة السداد"]), debtsDue: 0, goldPrice: 0, hawl: "", hawlDay: "", hawlMonth: "", paid: 0 }
   };
   var UNSCHED_CATS = ["طارئ صحي", "صيانة مفاجئة", "مناسبة اجتماعية", "سفر", "رسوم ومخالفات", "أخرى"];
@@ -300,7 +304,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   var S = {
     month: now.getFullYear() + "-" + pad(now.getMonth() + 1),
     estimates: clone(DEFAULTS.estimates), debts: clone(DEFAULTS.debts),
-    savings: clone(DEFAULTS.savings), investments: clone(DEFAULTS.investments), zakat: clone(DEFAULTS.zakat), security: { hash: "", salt: "" },
+    savings: clone(DEFAULTS.savings), investments: clone(DEFAULTS.investments), zakat: clone(DEFAULTS.zakat), sections: clone(DEFAULTS.sections), security: { hash: "", salt: "" },
     months: {}, db: null, mode: "loading", readOnly: false
   };
   function monthDoc(key) { key = key || S.month; if (!S.months[key]) S.months[key] = emptyMonth(); return S.months[key]; }
@@ -341,7 +345,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     setTimeout(function () { if (renderPending && !editing()) { renderPending = false; render(); } }, 0);
   });
 
-  var SETTINGS = ["estimates", "debts", "savings", "investments", "zakat"];
+  var SETTINGS = ["estimates", "debts", "savings", "investments", "zakat", "sections"];
   var monthUnsub = null;
   function watchMonth() {
     if (monthUnsub) { monthUnsub(); monthUnsub = null; }
@@ -521,9 +525,9 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       income: sum(m.income, amt),
       estFixed: sum(S.estimates.fixed, amt),
       estVar: sum(S.estimates.variable, amt),
-      actFixed: act(S.estimates.fixed),
-      actVar: act(S.estimates.variable),
-      unsched: sum(m.unscheduled, amt),
+      actFixed: secOn("act-fixed") ? act(S.estimates.fixed) : 0,
+      actVar: secOn("act-variable") ? act(S.estimates.variable) : 0,
+      unsched: secOn("unscheduled") ? sum(m.unscheduled, amt) : 0,
       debts: sum(S.debts.list, function (d) { return (+d.remaining || 0) > 0 ? d.installment : 0; }),
       saving: +m.savingDeposit || 0
     };
@@ -708,6 +712,33 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       note ? el("p", { class: "hint", text: note }) : null);
   }
 
+  /* expense sections the user can rename or remove (a removed one leaves the totals until restored) */
+  var SEC_DEFAULT = { actual: "المصروفات المجدولة", unscheduled: "المصروفات غير المجدولة", "act-fixed": "المصروفات الثابتة", "act-variable": "المصروفات غير الثابتة" };
+  function secName(k) { var n = (S.sections.names || {})[k]; return n && n.trim() ? n.trim() : SEC_DEFAULT[k]; }
+  function secOn(k) { var h = S.sections.hidden || {}; return !h[k] && !((k === "act-fixed" || k === "act-variable") && h.actual); }
+  var secEditing = "";
+  function secEditor(parent, keys, subs, figs) {
+    var path = "settings/sections";
+    S.sections.names = S.sections.names || {}; S.sections.hidden = S.sections.hidden || {};
+    var shown = keys.filter(function (k) { return !S.sections.hidden[k]; }), gone = keys.filter(function (k) { return S.sections.hidden[k]; });
+    if (secEditing !== parent) {
+      return [el("div", { class: "grid" }, shown.map(function (k) { return tile(k, secName(k), subs[k], figs[k]); })),
+        !shown.length ? el("p", { class: "empty", text: "حذفت كل الأقسام هنا. اضغط «تعديل الأقسام» لاستعادتها." }) : null,
+        S.readOnly ? null : el("div", { class: "copy-prev" }, el("button", { class: "add", type: "button", text: "✎ تعديل الأقسام", onclick: function () { secEditing = parent; render(); } }))];
+    }
+    return [el("div", { class: "card" },
+        el("h3", { text: "تعديل الأقسام" }),
+        el("div", { class: "rows" }, shown.map(function (k) {
+          return el("div", { class: "row sec-row" },
+            textInput("sn-" + k, S.sections.names[k] || secName(k), function (v) { S.sections.names[k] = v; save(path); }, "اسم القسم", SEC_DEFAULT[k]),
+            el("button", { class: "add danger", type: "button", text: "حذف القسم", onclick: function () { S.sections.hidden[k] = true; save(path); render(); } }));
+        })),
+        gone.length ? el("div", { class: "restore" }, el("p", { class: "hint", text: "الأقسام المحذوفة:" }),
+          gone.map(function (k) { return el("button", { class: "add", type: "button", text: "↺ استعادة «" + secName(k) + "»", onclick: function () { delete S.sections.hidden[k]; save(path); render(); } }); })) : null,
+        el("p", { class: "hint", text: "حذف القسم يخفيه ويُخرج مبالغه من الحسابات، ولا يمسح بياناته. يمكنك استعادته متى شئت." }),
+        el("button", { class: "enter small", type: "button", text: "تم", onclick: function () { secEditing = ""; render(); } }))];
+  }
+
   /* ---------- views ---------- */
   var VIEWS = {}, current = "home", totalFns = {};
 
@@ -724,7 +755,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       })) : null,
       el("div", { class: "grid" },
         tile("income", "الدخل والموارد", "الراتب وأي دخل أو مورد إضافي", money(t.income)),
-        tile("expenses", "المصروفات", "المجدولة · غير المجدولة", money(t.actFixed + t.actVar + t.unsched)),
+        tile("expenses", "المصروفات", ["actual", "unscheduled"].filter(secOn).map(secName).join(" · ") || "—", money(t.actFixed + t.actVar + t.unsched)),
         tile("debts", "الديون والالتزامات", "الأقساط الشهرية", money(t.debts)),
         tile("savings", "الادخار", "إيداع الشهر وأهداف الادخار", money(t.saving)),
         tile("invest", "الاستثمار", "المحفظة والربح والخسارة", money(sum(S.investments.list, function (x) { return x.current; }))),
@@ -737,25 +768,26 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 
   VIEWS.expenses = function () {
     var t = totals();
-    return [header("المصروفات", "sections", "الأقسام"), monthBar(),
-      el("div", { class: "grid" },
-        tile("actual", "المصروفات المجدولة", "الثابتة · غير الثابتة", money(t.actFixed + t.actVar)),
-        tile("unscheduled", "المصروفات غير المجدولة", "مصروفات خارج الخطة", money(t.unsched)))];
+    return [header("المصروفات", "sections", "الأقسام"), monthBar()].concat(
+      secEditor("expenses", ["actual", "unscheduled"],
+        { actual: ["act-fixed", "act-variable"].filter(secOn).map(secName).join(" · "), unscheduled: "مصروفات خارج الخطة" },
+        { actual: money(t.actFixed + t.actVar), unscheduled: money(t.unsched) }));
   };
 
   VIEWS.actual = function () {
     var t = totals();
-    return [header("المصروفات المجدولة", "expenses", "المصروفات"), monthBar(),
-      el("p", { class: "hint", text: "المصروفات المتكررة كل شهر، وما صرفته عليها في الشهر المختار." }),
-      el("div", { class: "grid" },
-        tile("act-fixed", "المصروفات الثابتة", "مبالغ لا تتغير من شهر لآخر", money(t.actFixed)),
-        tile("act-variable", "المصروفات غير الثابتة", "مبالغ تتغير حسب الاستهلاك", money(t.actVar)))];
+    return [header(secName("actual"), "expenses", "المصروفات"), monthBar(),
+      el("p", { class: "hint", text: "المصروفات المتكررة كل شهر، وما صرفته عليها في الشهر المختار." })].concat(
+      secEditor("actual", ["act-fixed", "act-variable"],
+        { "act-fixed": "مبالغ لا تتغير من شهر لآخر", "act-variable": "مبالغ تتغير حسب الاستهلاك" },
+        { "act-fixed": money(t.actFixed), "act-variable": money(t.actVar) }));
   };
-  function actList(kind, title) {
+  function actList(kind, sec) {
     return function () {
+      var title = secName(sec);
       var list = S.estimates[kind], m = monthDoc(), path = "months/" + S.month, itemsPath = "settings/estimates";
       totalFns.act = function () { return money(sum(list, function (x) { return m.actual[x.id] || 0; })); };
-      return [header(title, "actual", "المجدولة"), monthBar(),
+      return [header(title, "actual", secName("actual")), monthBar(),
         el("div", { class: "card" },
           list.length ? sortable(list, itemsPath, list.map(function (it, i) {
             return el("div", { class: "row" },
@@ -769,13 +801,13 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         el("p", { class: "hint", text: "البنود نفسها تبقى لكل الأشهر، والمبالغ تُسجَّل لكل شهر على حدة." })];
     };
   }
-  VIEWS["act-fixed"] = actList("fixed", "المصروفات الثابتة");
-  VIEWS["act-variable"] = actList("variable", "المصروفات غير الثابتة");
+  VIEWS["act-fixed"] = actList("fixed", "act-fixed");
+  VIEWS["act-variable"] = actList("variable", "act-variable");
 
   VIEWS.unscheduled = function () {
     var m = monthDoc(), path = "months/" + S.month, list = m.unscheduled;
     totalFns.un = function () { return money(sum(list, amt)); };
-    return [header("المصروفات غير المجدولة", "expenses", "المصروفات"), monthBar(),
+    return [header(secName("unscheduled"), "expenses", "المصروفات"), monthBar(),
       el("p", { class: "hint", text: "مصروفات لم تكن في الخطة، مثل عطل مفاجئ في السيارة أو زيارة طبية طارئة." }),
       el("div", { class: "card" },
         list.length ? sortable(list, path, list.map(function (it, i) {
@@ -998,13 +1030,13 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   VIEWS.overview = function () {
     var m = monthDoc(), t = totals();
     var parts = [
-      { k: "مصروفات ثابتة", v: t.actFixed, c: "#6f9ee8" },
-      { k: "مصروفات غير ثابتة", v: t.actVar, c: "#b58be0" },
-      { k: "مصروفات غير مجدولة", v: t.unsched, c: "#e58272" },
+      secOn("act-fixed") && { k: secName("act-fixed"), v: t.actFixed, c: "#6f9ee8" },
+      secOn("act-variable") && { k: secName("act-variable"), v: t.actVar, c: "#b58be0" },
+      secOn("unscheduled") && { k: secName("unscheduled"), v: t.unsched, c: "#e58272" },
       { k: "أقساط الديون", v: t.debts, c: "#e3b552" },
       { k: "الادخار", v: t.saving, c: "#5cc29a" },
       { k: "المتبقي", v: Math.max(t.left, 0), c: "#4a6795" }
-    ];
+    ].filter(Boolean);
     var base = Math.max(t.income, t.spent + t.saving, 1);
     var tips = [];
     if (t.income && t.unsched / t.income > 0.1) tips.push("المصروفات غير المجدولة تجاوزت ١٠٪ من الدخل. صندوق طوارئ يغطي ثلاثة أشهر يخفف أثرها.");
@@ -1033,9 +1065,9 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   /* ---------- budget chart over a chosen period ---------- */
   var SERIES = [
     { k: "income", n: "الدخل والموارد", c: "#3987e5", f: function (t) { return t.income; } },
-    { k: "fixed", n: "المصروفات الثابتة", c: "#d95926", f: function (t) { return t.actFixed; } },
-    { k: "variable", n: "المصروفات غير الثابتة", c: "#199e70", f: function (t) { return t.actVar; } },
-    { k: "unsched", n: "المصروفات غير المجدولة", c: "#c98500", f: function (t) { return t.unsched; } },
+    { k: "fixed", sec: "act-fixed", n: "المصروفات الثابتة", c: "#d95926", f: function (t) { return t.actFixed; } },
+    { k: "variable", sec: "act-variable", n: "المصروفات غير الثابتة", c: "#199e70", f: function (t) { return t.actVar; } },
+    { k: "unsched", sec: "unscheduled", n: "المصروفات غير المجدولة", c: "#c98500", f: function (t) { return t.unsched; } },
     { k: "debts", n: "أقساط الديون", c: "#d55181", f: function (t) { return t.debts; } },
     { k: "saving", n: "الادخار", c: "#008300", f: function (t) { return t.saving; } },
     { k: "left", n: "المتبقي", c: "#9085e9", f: function (t) { return t.left; } }
@@ -1049,6 +1081,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   function monthName(key, withYear) { var p = key.split("-").map(Number), d = new Date(p[0], p[1] - 1, 1); return withYear ? fmtMonth.format(d) : fmtShort.format(d); }
   function niceStep(span, n) { var raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw || 1))), r = raw / mag; return (r <= 1 ? 1 : r <= 2 ? 2 : r <= 2.5 ? 2.5 : r <= 5 ? 5 : 10) * mag; }
   VIEWS.chart = function () {
+    var SER = SERIES.filter(function (sr) { return !sr.sec || secOn(sr.sec); }).map(function (sr) { return sr.sec ? Object.assign({}, sr, { n: secName(sr.sec) }) : sr; });
     var a = CH.from, b = CH.to;
     if (monthDiff(a, b) < 0) { var x = a; a = b; b = x; }
     var keys = []; for (var k = a; monthDiff(k, b) >= 0 && keys.length < 60; k = addMonths(k, 1)) keys.push(k);
@@ -1068,23 +1101,23 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "card" },
         el("h3", { text: "الأقسام" }),
         (function () {
-          var picked = SERIES.filter(function (sr) { return CH.on[sr.k]; });
-          var label = !picked.length ? "اختر الأقسام" : picked.length === SERIES.length ? "جميع الأقسام" : picked.length <= 2 ? picked.map(function (sr) { return sr.n; }).join("، ") : picked[0].n + (picked.length === 3 ? " وقسمان آخران" : " و" + fmt.format(picked.length - 1) + " أقسام أخرى");
-          var allOn = picked.length === SERIES.length;
+          var picked = SER.filter(function (sr) { return CH.on[sr.k]; });
+          var label = !picked.length ? "اختر الأقسام" : picked.length === SER.length ? "جميع الأقسام" : picked.length <= 2 ? picked.map(function (sr) { return sr.n; }).join("، ") : picked[0].n + (picked.length === 3 ? " وقسمان آخران" : " و" + fmt.format(picked.length - 1) + " أقسام أخرى");
+          var allOn = picked.length === SER.length;
           function box(checked, text, color, onchange) {
             return el("label", { class: "pick" }, el("input", { type: "checkbox", checked: checked ? "" : null, onchange: onchange }),
               color ? el("i", { style: "background:" + color }) : el("i", { class: "none" }), el("span", { text: text }));
           }
           var d = el("details", { class: "picker", open: chartMenuOpen ? "" : null, ontoggle: function () { chartMenuOpen = d.open; } },
-            el("summary", null, el("span", { text: label }), el("small", { class: "num", text: fmt.format(picked.length) + " / " + fmt.format(SERIES.length) })),
+            el("summary", null, el("span", { text: label }), el("small", { class: "num", text: fmt.format(picked.length) + " / " + fmt.format(SER.length) })),
             el("div", { class: "pick-list" },
-              box(allOn, "جميع الأقسام", null, function () { CH.on = {}; if (!allOn) SERIES.forEach(function (sr) { CH.on[sr.k] = 1; }); chartPrefs(); }),
-              SERIES.map(function (sr) {
+              box(allOn, "جميع الأقسام", null, function () { CH.on = {}; if (!allOn) SER.forEach(function (sr) { CH.on[sr.k] = 1; }); chartPrefs(); }),
+              SER.map(function (sr) {
                 return box(CH.on[sr.k], sr.n, sr.c, function () { if (CH.on[sr.k]) delete CH.on[sr.k]; else CH.on[sr.k] = 1; chartPrefs(); });
               })));
           return d;
         })(),
-        el("div", { class: "legend-row" }, SERIES.filter(function (sr) { return CH.on[sr.k]; }).map(function (sr) { return el("span", null, el("i", { style: "background:" + sr.c }), sr.n); })),
+        el("div", { class: "legend-row" }, SER.filter(function (sr) { return CH.on[sr.k]; }).map(function (sr) { return el("span", null, el("i", { style: "background:" + sr.c }), sr.n); })),
         el("div", { class: "seg", role: "group", "aria-label": "نوع الرسم" },
           el("button", { type: "button", "aria-pressed": CH.type === "line" ? "true" : "false", text: "خطوط", onclick: function () { CH.type = "line"; chartPrefs(); } }),
           el("button", { type: "button", "aria-pressed": CH.type === "bar" ? "true" : "false", text: "أعمدة", onclick: function () { CH.type = "bar"; chartPrefs(); } })))
@@ -1094,7 +1127,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       Promise.all(missing.map(loadMonth)).then(function () { if (current === "chart") render(); });
       return [head].concat(controls, el("div", { class: "card" }, el("p", { class: "empty", text: "جارٍ تجهيز الرسم…" })));
     }
-    var series = SERIES.filter(function (sr) { return CH.on[sr.k]; });
+    var series = SER.filter(function (sr) { return CH.on[sr.k]; });
     var rows = keys.map(function (k) { var t = totals(k); return series.map(function (sr) { return Math.round(sr.f(t) * 100) / 100; }); });
     if (!series.length) return [head].concat(controls, el("div", { class: "card" }, el("p", { class: "empty", text: "اختر قسمًا واحدًا على الأقل." })));
     return [head].concat(controls,
@@ -1259,6 +1292,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     if (!VIEWS[v]) v = "home";
     if (v !== "home" && (!secLoaded || !isUnlocked())) v = "home";
     var changed = v !== current;
+    if (changed) secEditing = "";
     if (changed || !$("quoteText").textContent) showQuote(v);
     current = v;
     $("home").hidden = v !== "home";
