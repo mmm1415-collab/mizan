@@ -286,8 +286,9 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   function items(prefix, names) { return names.map(function (n, i) { return { id: prefix + i, name: n, amount: 0 }; }); }
   var DEFAULTS = {
     estimates: {
-      fixed: items("f", ["الإيجار أو قسط السكن", "الكهرباء", "الماء", "الجوال والإنترنت", "الرسوم الدراسية", "العمالة المنزلية", "التأمين", "الاشتراكات الشهرية"]),
-      variable: items("v", ["البقالة والتموين", "الوقود والمواصلات", "المطاعم والقهوة", "الملابس", "الصحة والأدوية", "الترفيه والنزهات", "الهدايا والمناسبات", "الصيانة المنزلية"])
+      fixed: items("f", ["الإيجار أو قسط السكن", "الكهرباء", "الماء", "الجوال والإنترنت", "الرسوم الدراسية", "العمالة المنزلية", "التأمين", "الاشتراكات الشهرية"])
+        .concat(items("v", ["البقالة والتموين", "الوقود والمواصلات", "المطاعم والقهوة", "الملابس", "الصحة والأدوية", "الترفيه والنزهات", "الهدايا والمناسبات", "الصيانة المنزلية"])),
+      variable: []
     },
     debts: { list: [] },
     savings: { goals: [{ id: "g1", name: "صندوق الطوارئ", target: 0, saved: 0 }, { id: "g2", name: "الإجازة السنوية", target: 0, saved: 0 }] },
@@ -395,6 +396,18 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     if (changed) save("settings/debts");
   }
 
+  /* scheduled expenses are one list now: older data kept fixed and variable apart */
+  function mergeScheduled() {
+    if (S.readOnly) return;
+    if ((S.estimates.variable || []).length) {
+      S.estimates.fixed = (S.estimates.fixed || []).concat(S.estimates.variable); S.estimates.variable = [];
+      save("settings/estimates");
+    }
+    var moved = false;
+    (S.sections.custom || []).forEach(function (c) { if (c.parent === "actual") { c.parent = "expenses"; moved = true; } });
+    if (moved) save("settings/sections");
+  }
+
   async function boot() {
     var db = null;
     try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (e) { db = null; }
@@ -403,7 +416,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     if (!db) {
       SETTINGS.forEach(function (k) { var v = lsGet("settings/" + k); if (v) S[k] = v; });
       S.security = lsGet("settings/security") || S.security; secLoaded = true;
-      rollDebts();
+      rollDebts(); mergeScheduled();
     } else {
       db.doc("settings/security").onSnapshot(function (snap) {
         if (!pending["settings/security"]) S.security = snap.exists ? Object.assign({ hash: "", salt: "" }, snap.data()) : { hash: "", salt: "" };
@@ -412,7 +425,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       SETTINGS.forEach(function (k) {
         var path = "settings/" + k;
         db.doc(path).onSnapshot(function (snap) {
-          if (snap.exists && !pending[path]) { S[k] = Object.assign(clone(DEFAULTS[k]), snap.data()); if (k === "debts") rollDebts(); softRender(); }
+          if (snap.exists && !pending[path]) { S[k] = Object.assign(clone(DEFAULTS[k]), snap.data()); if (k === "debts") rollDebts(); if (k === "estimates" || k === "sections") mergeScheduled(); softRender(); }
         }, function () {});
       });
     }
@@ -492,7 +505,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 
   /* ---------- quotes (moving band at the top of every page) ---------- */
   var QUOTES = {"money": [["المال خادم جيد، لكنه سيد فاسد.", "فرانسيس بيكون"], ["ليس المهم كم من المال تجني، بل كم من المال تدخر، وكيف يعمل هذا المال من أجلك.", "روبرت كيوساكي"], ["الثروة هي القدرة على تجربة الحياة بالكامل.", "هنري ديفيد ثورو"], ["الشخص الذي لا يعرف أين يذهب ماله، سيجد نفسه دائماً يتساءل أين ذهب.", ""], ["الفقر ليس نقصاً في المال، بل هو غياب العقلية المنتجة.", ""], ["إذا كنت تعمل من أجل المال، فأنت تعطي القوة لصاحب العمل. إذا كان المال يعمل من أجلك، فأنت من يمتلك القوة.", ""], ["الثروة الحقيقية هي ما تملكه عندما تفقد كل أموالك.", ""], ["الاستثمار في المعرفة يدفع دائماً أفضل الفوائد.", "بنجامين فرانكلين"], ["الأغنياء يستثمرون في الوقت، والفقراء يستثمرون في المال.", ""], ["النجاح المالي هو عبارة عن ٢٠٪ معرفة و٨٠٪ سلوك وانضباط.", "ديف رامزي"]], "saving": [["لا تدخر ما تبقى بعد الإنفاق، بل أنفق ما تبقى بعد الادخار.", "وارن بافيت"], ["كل درهم تدخره هو جندي يعمل في جيش ثروتك المستقبلية.", ""], ["الادخار هو فن العيش بأقل مما تكسب لتتمكن من العيش بأكثر مما كنت تتخيل لاحقاً.", ""], ["الحرمان المؤقت من الكماليات هو الثمن الذي تدفعه مقابل الحرية الأبدية.", ""], ["الرجل الذي يشتري ما لا يحتاجه، يسرق نفسه.", "مثل سويدي"], ["حتى أصغر قطرات الماء يمكنها ملء الحوض، وكذلك أصغر المدخرات.", ""], ["الادخار لا يعني البخل، بل يعني الذكاء في إدارة الموارد.", ""], ["الفرق بين الغني والفقير هو أن الغني يدخر ثم ينفق، والفقير ينفق ثم يحاول الادخار.", ""], ["كن حذراً من النفقات الصغيرة؛ فتسريب بسيط يمكن أن يغرق سفينة كبيرة.", "بنجامين فرانكلين"], ["الادخار هو تأجيل المتعة العابرة من أجل أمان دائم.", ""]], "debt": [["الدين هو الوحش الذي يأكل مستقبلك قبل أن يصل إليك.", ""], ["من يقترض، يبيع حريته.", "أندرو كارنيجي"], ["الديون هي العبيد الجدد في العصر الحديث.", ""], ["أفضل وقت لسداد ديونك كان بالأمس، ثاني أفضل وقت هو الآن.", ""], ["لا تشترِ شيئاً لتبهر أشخاصاً لا تحبهم بأموال لا تملكها.", ""], ["القروض تجعل الحياة تبدو سهلة في البداية، لكنها تجعلها مستحيلة في النهاية.", ""], ["العيش بدون ديون هو أرقى أنواع الرفاهية.", ""], ["الفائدة البنكية على الديون لا تنام، لا تمرض، ولا تأخذ عطلة؛ إنها تلتهمك بصمت.", ""], ["السعادة لا تُشترى ببطاقة ائتمان.", ""], ["أن تنام جائعاً أفضل من أن تستيقظ مديوناً.", "مثل عربي قديم"]], "invest": [["السوق مصمم لنقل الأموال من الشخص غير الصبور إلى الشخص الصبور.", "وارن بافيت"], ["أفضل وقت لزراعة شجرة كان منذ ٢٠ عاماً، ثاني أفضل وقت هو الآن.", "مثل صيني"], ["لا تضع كل بيضك في سلة واحدة.", ""], ["الاستثمار هو عملية تحويل الأموال من شخص يريد المتعة الفورية إلى شخص يريد الأمان المستقبلي.", ""], ["الثروة لا تأتي من الدخل العالي، بل من الأصول التي تدر دخلاً.", ""], ["الخطر الحقيقي هو عدم المخاطرة بأي شيء.", ""], ["المستثمر الذكي هو من يشتري عندما يخاف الجميع، ويبيع عندما يطمع الجميع.", ""], ["المال هو بذرة، إذا زرعتها في أرض الاستثمار أثمرت غابة من الثروة.", ""], ["الفائدة المركبة هي الأعجوبة الثامنة في العالم.", "ألبرت أينشتاين"], ["الاستثمار الناجح يتطلب وقتاً وانضباطاً وصبراً.", ""]], "life": [["المال لا يغير الناس، بل يكشف حقيقتهم فقط.", ""], ["أن تكون غنياً هو أن تملك المال، أما أن تكون ثرياً فهو أن تملك الوقت.", ""], ["الفقير ليس من لا يملك قرشاً، بل من لا يملك حلماً.", ""], ["المال يعطيك خيارات، والخيارات تعطيك الحرية.", ""], ["اجعل هدفك هو الاستقلال المالي، وليس مجرد جمع الأرقام.", ""], ["لا تدع كسب العيش ينسيك بناء حياة.", ""], ["العطاء هو جزء من الثقافة المالية الناجحة؛ المال الذي يخرج بصدق يعود ببركة.", ""], ["التخطيط المالي هو الفرق بين الحلم والواقع.", ""], ["كن سيد مالك، ولا تسمح له بأن يصبح سيدك.", ""], ["الرحلة نحو الثراء تبدأ بخطوة واحدة: قرار بأنك تستحق حياة أفضل.", ""]]};
-  var QUOTE_FOR = { savings: ["saving"], debts: ["debt"], invest: ["invest"], zakat: ["life"], expenses: ["saving", "money"], actual: ["money"], "act-fixed": ["money"], "act-variable": ["money"], unscheduled: ["saving"], chart: ["money", "invest"], income: ["money"], summary: ["money", "life"], overview: ["money", "life"] };
+  var QUOTE_FOR = { savings: ["saving"], debts: ["debt"], invest: ["invest"], zakat: ["life"], expenses: ["saving", "money"], actual: ["money"], unscheduled: ["saving"], chart: ["money", "invest"], income: ["money"], summary: ["money", "life"], overview: ["money", "life"] };
   var lastQuote = "";
   function showQuote(view) {
     var groups = QUOTE_FOR[view] || ["money", "life"], pool = [];
@@ -526,9 +539,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var t = {
       income: sum(m.income, amt),
       estFixed: sum(S.estimates.fixed, amt),
-      estVar: sum(S.estimates.variable, amt),
-      actFixed: secOn("act-fixed") ? act(S.estimates.fixed) : 0,
-      actVar: secOn("act-variable") ? act(S.estimates.variable) : 0,
+      actFixed: secOn("actual") ? act(S.estimates.fixed) : 0,
+      actVar: 0,
       unsched: secOn("unscheduled") ? sum(m.unscheduled, amt) : 0,
       customAct: customTotal(m, "actual"),
       customExp: customTotal(m, "expenses"),
@@ -798,18 +810,10 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var t = totals();
     return [header("المصروفات", "sections", "الأقسام"), monthBar()].concat(
       secEditor("expenses", ["actual", "unscheduled"],
-        { actual: ["act-fixed", "act-variable"].concat(customSecs("actual").map(function (c) { return c.id; })).filter(secOn).map(secName).join(" · "), unscheduled: "مصروفات خارج الخطة" },
-        function (k) { return k === "actual" ? money(t.actFixed + t.actVar + t.customAct) : k === "unscheduled" ? money(t.unsched) : money(sumOne(k)); }));
+        { actual: "مصروفات متكررة كل شهر", unscheduled: "مصروفات خارج الخطة" },
+        function (k) { return k === "actual" ? money(t.actFixed) : k === "unscheduled" ? money(t.unsched) : money(sumOne(k)); }));
   };
 
-  VIEWS.actual = function () {
-    var t = totals();
-    return [header(secName("actual"), "expenses", "المصروفات"), monthBar(),
-      el("p", { class: "hint", text: "المصروفات المتكررة كل شهر، وما صرفته عليها في الشهر المختار." })].concat(
-      secEditor("actual", ["act-fixed", "act-variable"],
-        { "act-fixed": "مبالغ لا تتغير من شهر لآخر", "act-variable": "مبالغ تتغير حسب الاستهلاك" },
-        function (k) { return k === "act-fixed" ? money(t.actFixed) : k === "act-variable" ? money(t.actVar) : money(sumOne(k)); }));
-  };
   function sumOne(k) { var c = customSec(k), m = monthDoc(); return c ? sum(c.items || [], function (it) { return m.actual[it.id] || 0; }) : 0; }
   /* a section of recurring items: names stay for every month, amounts are kept per month */
   function itemsView(o) {
@@ -831,12 +835,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         el("p", { class: "hint", text: "البنود نفسها تبقى لكل الأشهر، والمبالغ تُسجَّل لكل شهر على حدة." })];
     };
   }
-  function actList(kind, sec) {
-    return itemsView({ list: function () { return S.estimates[kind]; }, itemsPath: "settings/estimates", title: function () { return secName(sec); },
-      back: function () { return "actual"; }, backLabel: function () { return secName("actual"); }, copyKey: kind });
-  }
-  VIEWS["act-fixed"] = actList("fixed", "act-fixed");
-  VIEWS["act-variable"] = actList("variable", "act-variable");
+  VIEWS.actual = itemsView({ list: function () { return S.estimates.fixed; }, itemsPath: "settings/estimates", title: function () { return secName("actual"); },
+    back: function () { return "expenses"; }, backLabel: function () { return "المصروفات"; }, copyKey: "fixed" });
   function registerCustomViews() {
     customSecs().forEach(function (c) {
       VIEWS["cs-" + c.id] = itemsView({ list: function () { c.items = c.items || []; return c.items; }, itemsPath: "settings/sections", title: function () { return secName(c.id); },
@@ -1070,8 +1070,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   VIEWS.overview = function () {
     var m = monthDoc(), t = totals();
     var parts = [
-      secOn("act-fixed") && { k: secName("act-fixed"), v: t.actFixed, c: "#6f9ee8" },
-      secOn("act-variable") && { k: secName("act-variable"), v: t.actVar, c: "#b58be0" },
+      secOn("actual") && { k: secName("actual"), v: t.actFixed, c: "#6f9ee8" },
       secOn("unscheduled") && { k: secName("unscheduled"), v: t.unsched, c: "#e58272" },
       customSecs().length && { k: "الأقسام المضافة", v: t.custom, c: "#7fb8b0" },
       { k: "أقساط الديون", v: t.debts, c: "#e3b552" },
@@ -1106,8 +1105,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   /* ---------- budget chart over a chosen period ---------- */
   var SERIES = [
     { k: "income", n: "الدخل والموارد", c: "#3987e5", f: function (t) { return t.income; } },
-    { k: "fixed", sec: "act-fixed", n: "المصروفات الثابتة", c: "#d95926", f: function (t) { return t.actFixed; } },
-    { k: "variable", sec: "act-variable", n: "المصروفات غير الثابتة", c: "#199e70", f: function (t) { return t.actVar; } },
+    { k: "fixed", sec: "actual", n: "المصروفات المجدولة", c: "#d95926", f: function (t) { return t.actFixed; } },
     { k: "unsched", sec: "unscheduled", n: "المصروفات غير المجدولة", c: "#c98500", f: function (t) { return t.unsched; } },
     { k: "debts", n: "أقساط الديون", c: "#d55181", f: function (t) { return t.debts; } },
     { k: "saving", n: "الادخار", c: "#008300", f: function (t) { return t.saving; } },
