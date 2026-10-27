@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1d3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ميزان">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>ميزان</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Kufi+Arabic:wght@500;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap">
+<style>
+/* Layout: formal single-theme navy app. Home = centred title + «الدخول»; the button opens the sections grid; each section is its own view (hash-routed) with a header row (back button right, title centre), an optional month bar, then editable lists and totals. RTL. */
+:root {
+  --bg: #0b1d3a;
+  --bg-deep: #07142a;
+  --panel: #10274b;
+  --panel-2: #0d2142;
+  --ink: #f2f5fa;
+  --muted: #a9b6cc;
+  --line: #24406b;
+  --gold: #c9a55a;
+  --gold-soft: rgba(201, 165, 90, .18);
+  --ok: #5cc29a;
+  --warn: #e3b552;
+  --bad: #e58272;
+  --font-display: "Noto Kufi Arabic", "Segoe UI", Tahoma, sans-serif;
+  --font-body: "Noto Naskh Arabic", "Segoe UI", Tahoma, serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; direction: rtl; text-align: right; }
+.enter svg { transform: scaleX(-1); }
+body { background: radial-gradient(120% 80% at 50% 0%, var(--bg) 0%, var(--bg-deep) 100%) fixed, var(--bg-deep); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.7; }
+.wrap { min-height: 100%; max-width: 760px; margin: 0 auto; padding-block: 28px 36px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Home */
+.wrap > main { flex: 1; display: grid; }
+.home { display: grid; grid-template-rows: 1fr auto 1fr; justify-items: center; text-align: center; }
+.home .title { align-self: end; padding-bottom: 48px; }
+.home .enter { grid-row: 2; }
+.title { display: grid; justify-items: center; gap: 14px; }
+.rule { display: flex; align-items: center; gap: 12px; width: min(280px, 70vw); color: var(--gold); }
+.rule::before, .rule::after { content: ""; flex: 1; height: 1px; background: var(--gold); opacity: .7; }
+.rule i { width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg); }
+.home h1 { font-size: clamp(2.8rem, 13vw, 5rem); font-weight: 700; line-height: 1.25; color: var(--ink); letter-spacing: .01em; }
+.enter { display: inline-flex; align-items: center; gap: 12px; border: 1px solid var(--gold); background: var(--gold); color: var(--bg-deep); cursor: pointer; font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; padding: 12px 32px; border-radius: 6px; box-shadow: 0 0 0 6px var(--gold-soft); }
+.enter svg { width: 24px; height: 24px; }
+.quote { margin-top: 32px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; justify-items: center; gap: 2px; text-align: center; }
+.quote { width: 100%; grid-template-columns: minmax(0, 1fr); }
+.quote p { margin: 0; width: 100%; color: var(--ink); font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; line-height: 1.8; white-space: nowrap; }
+.quote p.wrap { white-space: normal; text-wrap: balance; }
+.quote span { color: var(--gold); font-size: .85rem; font-weight: 700; font-family: var(--font-display); }
+.gate, .pin-form { display: contents; }
+.gate > p { grid-row: 2; }
+.home .enter { grid-row: 2; }
+.pin-box { display: grid; justify-items: center; gap: 10px; }
+.home > .gate > .pin-form > .pin-box, .pin-below { grid-row: 3; align-self: start; margin-top: 26px; display: grid; justify-items: center; gap: 12px; }
+.reg-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--gold); background: transparent; color: var(--gold); border-radius: 6px; padding: 8px 18px; cursor: pointer; font-family: var(--font-display); }
+.reg-btn svg { width: 18px; height: 18px; }
+.gate-title { font-size: 1.15rem; color: var(--gold); font-weight: 500; }
+.gate-hint { margin: -6px 0 0; color: var(--muted); font-size: .85rem; }
+.pin-pair { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.pin-field { display: grid; justify-items: center; gap: 4px; }
+.pin-field label { font-family: var(--font-display); color: var(--muted); font-size: .9rem; }
+.pin-input { width: 170px; text-align: center; letter-spacing: .4em; font-size: 1.3rem; padding: 10px; border-color: var(--gold); }
+.pin-msg { margin: 0; min-height: 1.4em; font-size: .9rem; text-align: center; }
+.pin-msg.err { color: var(--bad); } .pin-msg.ok { color: var(--ok); }
+.enter.small { font-size: 1rem; padding: 8px 22px; box-shadow: none; }
+.pin-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.lockbtn { justify-self: end; border: 1px solid var(--line); background: var(--panel); color: var(--gold); border-radius: 6px; width: 38px; height: 38px; display: grid; place-items: center; cursor: pointer; text-decoration: none; }
+.lockbtn svg { width: 18px; height: 18px; }
+@media (max-width: 420px) { .inside-head.has-lock { grid-template-columns: auto 1fr auto; } }
+
+.ayah { margin: 6px 0 0; max-width: 30ch; font-family: "Amiri", "Noto Naskh Arabic", serif; font-size: clamp(1.15rem, 4.6vw, 1.45rem); line-height: 2; color: var(--gold); text-wrap: balance; }
+.ayah span { display: block; font-size: .7em; color: var(--muted); line-height: 1.6; }
+@media (prefers-reduced-motion: no-preference) {
+  .enter { transition: background .2s ease, color .2s ease; }
+  .enter:hover { background: transparent; color: var(--gold); }
+}
+
+/* Views */
+.inside { display: grid; gap: 18px; align-content: start; }
+.inside-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; }
+.inside-head .back { justify-self: start; }
+.inside-head h2 { text-align: center; font-size: 1.5rem; }
+.back { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+.back svg { width: 18px; height: 18px; }
+@media (max-width: 420px) { .inside-head { grid-template-columns: auto 1fr; } .inside-head h2 { text-align: center; font-size: 1.2rem; } }
+
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 480px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 6px; min-width: 0; justify-items: center; text-align: center; text-decoration: none; color: inherit; }
+a.tile { cursor: pointer; }
+a.tile:hover { border-color: var(--gold); }
+.tile h3 { font-weight: 500; font-size: 1.1rem; color: var(--gold); }
+.tile .fig { font-family: var(--font-display); font-size: 1rem; color: var(--ink); }
+.tag { font-size: .8rem; color: var(--muted); }
+
+.monthbar { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.monthbar strong { font-family: var(--font-display); font-weight: 500; min-width: 150px; text-align: center; }
+.monthbar button { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; width: 36px; height: 36px; cursor: pointer; display: grid; place-items: center; }
+.monthbar svg { width: 18px; height: 18px; }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.card h3 { font-size: 1rem; font-weight: 500; color: var(--gold); }
+.hint { margin: 0; color: var(--muted); font-size: .9rem; text-align: center; }
+.rows { display: grid; gap: 8px; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) 120px 32px; gap: 8px; align-items: center; }
+.row .lbl { min-width: 0; overflow-wrap: anywhere; }
+.row .sub { display: block; color: var(--muted); font-size: .8rem; }
+input, select { width: 100%; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; }
+input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums; }
+.x { border: 0; background: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; width: 32px; height: 32px; border-radius: 6px; }
+.x:hover { color: var(--bad); background: var(--panel-2); }
+.add { justify-self: start; border: 1px dashed var(--gold); background: none; color: var(--gold); border-radius: 6px; padding: 6px 14px; cursor: pointer; }
+.total { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 10px; font-family: var(--font-display); }
+.total b { color: var(--gold); font-weight: 700; }
+.subform { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.subform label { display: grid; gap: 2px; font-size: .8rem; color: var(--muted); min-width: 0; }
+.item { border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 8px; background: var(--panel-2); }
+.item input, .item select { background: var(--panel); }
+.item-head { display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 8px; align-items: center; }
+.item-foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-size: .85rem; color: var(--muted); }
+
+.track { height: 8px; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
+.item .track { background: var(--panel); }
+.fill { height: 100%; background: var(--ok); border-radius: 99px; }
+.fill.warn { background: var(--warn); }
+.fill.bad { background: var(--bad); }
+.chip { display: inline-block; font-size: .75rem; border-radius: 4px; padding: 0 8px; border: 1px solid currentColor; }
+.chip.ok { color: var(--ok); } .chip.warn { color: var(--warn); } .chip.bad { color: var(--bad); }
+.pos { color: var(--ok); } .neg { color: var(--bad); }
+.item-foot.pos { color: var(--ok); } .item-foot.neg { color: var(--bad); }
+
+.cmp { display: grid; gap: 4px; padding-block: 8px; border-top: 1px solid var(--line); }
+.cmp:first-child { border-top: 0; }
+.cmp-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cmp-nums { color: var(--muted); font-size: .85rem; }
+
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.kpi { background: var(--panel); padding: 12px; display: grid; gap: 2px; text-align: center; min-width: 0; }
+.kpi span { color: var(--muted); font-size: .8rem; }
+.kpi b { font-family: var(--font-display); font-size: 1.1rem; overflow-wrap: anywhere; }
+@media (max-width: 480px) { .kpis { grid-template-columns: 1fr 1fr; } .kpis .kpi:last-child { grid-column: 1 / -1; } }
+.stack { display: flex; height: 14px; border-radius: 99px; overflow: hidden; background: var(--panel-2); }
+.stack i { display: block; height: 100%; }
+.legend { display: grid; gap: 6px; }
+.legend div { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: .9rem; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; }
+.legend .pct { color: var(--muted); min-width: 3.5em; text-align: left; }
+.tips { margin: 0; padding-inline-start: 18px; display: grid; gap: 6px; }
+.notice { margin: 0; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; color: var(--muted); font-size: .85rem; text-align: center; }
+.empty { margin: 0; color: var(--muted); text-align: center; padding: 12px; border: 1px dashed var(--line); border-radius: 6px; }
+</style>
+</head>
+<body>
+<script>document.documentElement.setAttribute("dir", "rtl"); document.documentElement.setAttribute("lang", "ar");</script>
+<div class="wrap" dir="rtl" lang="ar">
+  <main>
+    <section class="home" id="home">
+      <div class="title">
+        <div class="rule" aria-hidden="true"><i></i></div>
+        <h1>ميزانيتي</h1>
+        <div class="rule" aria-hidden="true"><i></i></div>
+        <p class="ayah">﴿يَا أَيُّهَا الَّذِينَ آمَنُوا إِذَا تَدَايَنتُم بِدَيْنٍ إِلَىٰ أَجَلٍ مُّسَمًّى فَاكْتُبُوهُ﴾<span>[البقرة: ٢٨٢]</span></p>
+      </div>
+      <div class="gate" id="gate"></div>
+    </section>
+
+    <section class="inside" id="view" hidden></section>
+  </main>
+  <footer class="quote" aria-label="اقتباس">
+    <p id="quoteText"></p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = new Intl.NumberFormat("ar-SA", { maximumFractionDigits: 2 });
+  var fmtPct = new Intl.NumberFormat("ar-SA", { style: "percent", maximumFractionDigits: 0 });
+  var fmtMonth = new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { month: "long", year: "numeric" });
+  var money = function (n) { return fmt.format(Math.round((n || 0) * 100) / 100) + " ريال"; };
+  var uid = function () { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); };
+  var pad = function (n) { return String(n).padStart(2, "0"); };
+  var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
+  function parseAmount(v) {
+    var s = String(v == null ? "" : v).replace(/[٠-٩]/g, function (d) { return "٠١٢٣٤٥٦٧٨٩".indexOf(d); }).replace(/[٫,]/g, ".").replace(/[^\d.]/g, "");
+    var n = parseFloat(s);
+    return isFinite(n) ? Math.round(n * 100) / 100 : 0;
+  }
+  function el(tag, props) {
+    var n = document.createElement(tag);
+    if (props) for (var k in props) {
+      var v = props[k];
+      if (v == null || v === false) continue;
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v);
+    }
+    for (var i = 2; i < arguments.length; i++) {
+      var c = arguments[i];
+      if (c == null || c === false) continue;
+      if (Array.isArray(c)) c.forEach(function (x) { if (x != null && x !== false) n.append(x); });
+      else n.append(c);
+    }
+    return n;
+  }
+  var ICON_BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+  var LOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+  var ICON_FWD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
+  function svg(html) { var t = document.createElement("template"); t.innerHTML = html; return t.content.firstChild; }
+
+  /* ---------- starting categories (amounts start at zero) ---------- */
+  function items(prefix, names) { return names.map(function (n, i) { return { id: prefix + i, name: n, amount: 0 }; }); }
+  var DEFAULTS = {
+    estimates: {
+      fixed: items("f", ["الإيجار أو قسط السكن", "الكهرباء", "الماء", "الجوال والإنترنت", "الرسوم الدراسية", "العمالة المنزلية", "التأمين", "الاشتراكات الشهرية"]),
+      variable: items("v", ["البقالة والتموين", "الوقود والمواصلات", "المطاعم والقهوة", "الملابس", "الصحة والأدوية", "الترفيه والنزهات", "الهدايا والمناسبات", "الصيانة المنزلية"])
+    },
+    debts: { list: [] },
+    savings: { goals: [{ id: "g1", name: "صندوق الطوارئ", target: 0, saved: 0 }, { id: "g2", name: "الإجازة السنوية", target: 0, saved: 0 }] },
+    investments: { list: [] },
+    zakat: { assets: items("z", ["النقد في الحسابات البنكية", "النقد في اليد", "الذهب والفضة (بقيمتها)", "الأسهم والصناديق بنية المتاجرة", "عروض التجارة", "ديون لك مرجوّة السداد"]), debtsDue: 0, goldPrice: 0, hawl: "", paid: 0 }
+  };
+  var UNSCHED_CATS = ["طارئ صحي", "صيانة مفاجئة", "مناسبة اجتماعية", "سفر", "رسوم ومخالفات", "أخرى"];
+  var INVEST_TYPES = ["أسهم", "صناديق استثمارية", "صكوك وسندات", "عقار", "ذهب", "أخرى"];
+  function emptyMonth() {
+    return { income: [{ id: "i1", name: "الراتب", amount: 0 }, { id: "i2", name: "دخل إضافي", amount: 0 }], actual: {}, unscheduled: [], savingDeposit: 0 };
+  }
+
+  /* ---------- state + storage ---------- */
+  var now = new Date();
+  var S = {
+    month: now.getFullYear() + "-" + pad(now.getMonth() + 1),
+    estimates: clone(DEFAULTS.estimates), debts: clone(DEFAULTS.debts),
+    savings: clone(DEFAULTS.savings), investments: clone(DEFAULTS.investments), zakat: clone(DEFAULTS.zakat), security: { hash: "", salt: "" },
+    months: {}, db: null, mode: "loading", readOnly: false
+  };
+  function monthDoc(key) { key = key || S.month; if (!S.months[key]) S.months[key] = emptyMonth(); return S.months[key]; }
+  function dataFor(path) { return path.indexOf("months/") === 0 ? monthDoc(path.slice(7)) : S[path.slice(9)]; }
+  var LS = "mizaniyati:";
+  function lsGet(path) { try { var v = localStorage.getItem(LS + path); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+  function lsSet(path, v) { try { localStorage.setItem(LS + path, JSON.stringify(v)); } catch (e) {} }
+
+  /* one write at a time per document; a burst of typing becomes one write */
+  var pending = {}, writing = {}, again = {}, timers = {};
+  function save(path) {
+    pending[path] = true;
+    clearTimeout(timers[path]);
+    timers[path] = setTimeout(function () { flush(path); }, 600);
+  }
+  function flush(path) {
+    var data = clone(dataFor(path));
+    if (!S.db) { lsSet(path, data); pending[path] = false; return; }
+    if (writing[path]) { again[path] = true; return; }
+    writing[path] = true;
+    S.db.doc(path).set(data).catch(function (e) {
+      if (e && e.code === "invalid_argument") { S.readOnly = true; render(); }
+    }).then(function () {
+      writing[path] = false;
+      if (again[path]) { again[path] = false; flush(path); } else pending[path] = false;
+    });
+  }
+
+  /* re-render after a snapshot without pulling focus out of a field */
+  var renderPending = false;
+  function editing() { var a = document.activeElement; return a && document.querySelector("main").contains(a) && (a.tagName === "INPUT" || a.tagName === "SELECT"); }
+  function softRender() { if (editing()) { renderPending = true; return; } render(); }
+  document.addEventListener("focusout", function () {
+    setTimeout(function () { if (renderPending && !editing()) { renderPending = false; render(); } }, 0);
+  });
+
+  var SETTINGS = ["estimates", "debts", "savings", "investments", "zakat"];
+  var monthUnsub = null;
+  function watchMonth() {
+    if (monthUnsub) { monthUnsub(); monthUnsub = null; }
+    var key = S.month, path = "months/" + key;
+    if (!S.db) { if (!S.months[key]) S.months[key] = lsGet(path) || emptyMonth(); return; }
+    monthUnsub = S.db.doc(path).onSnapshot(function (snap) {
+      if (snap.exists && !pending[path]) { S.months[key] = Object.assign(emptyMonth(), snap.data()); softRender(); }
+    }, function () {});
+  }
+
+  async function boot() {
+    var db = null;
+    try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (e) { db = null; }
+    S.db = db;
+    S.mode = db ? "db" : "local";
+    if (!db) {
+      SETTINGS.forEach(function (k) { var v = lsGet("settings/" + k); if (v) S[k] = v; });
+      S.security = lsGet("settings/security") || S.security; secLoaded = true;
+    } else {
+      db.doc("settings/security").onSnapshot(function (snap) {
+        if (!pending["settings/security"]) S.security = snap.exists ? Object.assign({ hash: "", salt: "" }, snap.data()) : { hash: "", salt: "" };
+        secLoaded = true; softRender();
+      }, function () { secLoaded = true; softRender(); });
+      SETTINGS.forEach(function (k) {
+        var path = "settings/" + k;
+        db.doc(path).onSnapshot(function (snap) {
+          if (snap.exists && !pending[path]) { S[k] = Object.assign(clone(DEFAULTS[k]), snap.data()); softRender(); }
+        }, function () {});
+      });
+    }
+    watchMonth();
+    softRender();
+  }
+
+  /* ---------- PIN ---------- */
+  var secLoaded = false, attempts = 0, lockedUntil = 0;
+  function normPin(v) { return String(v || "").replace(/[٠-٩]/g, function (d) { return "٠١٢٣٤٥٦٧٨٩".indexOf(d); }).replace(/\D/g, ""); }
+  async function hashPin(pin, salt) {
+    try {
+      var buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(salt + ":" + pin));
+      return Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+    } catch (e) {
+      var h = 5381, str = salt + ":" + pin; for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return "d" + (h >>> 0).toString(16);
+    }
+  }
+  async function checkPin(pin) { return !!S.security.hash && (await hashPin(pin, S.security.salt)) === S.security.hash; }
+  async function setPin(pin) { var salt = uid() + uid(); S.security = { salt: salt, hash: await hashPin(pin, salt) }; flush("settings/security"); setUnlocked(true); gateState = ""; }
+  function setUnlocked(on) { try { if (on) sessionStorage.setItem(LS + "unlocked", S.security.hash || "1"); else sessionStorage.removeItem(LS + "unlocked"); } catch (e) {} unlockedMem = on ? (S.security.hash || "1") : ""; }
+  var unlockedMem = "";
+  function isUnlocked() {
+    if (!S.security.hash) return true;
+    var v = unlockedMem; try { v = v || sessionStorage.getItem(LS + "unlocked") || ""; } catch (e) {}
+    return v === S.security.hash;
+  }
+  var ENTER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M3 12h11"/><path d="M10 8l4 4-4 4"/></svg>';
+  var gateState = "";
+  function pinField(id, label) {
+    return el("div", { class: "pin-field" }, el("label", { for: id, text: label }),
+      el("input", { id: id, class: "pin-input", type: "password", inputmode: "numeric", autocomplete: "off", maxlength: "8" }));
+  }
+  function enterButton() { return el("button", { class: "enter", id: "enterBtn", type: "submit" }, svg(ENTER_ICON), "الدخول"); }
+  function renderGateOpen(note) {
+    $("gate").replaceChildren(el("form", { class: "pin-form", novalidate: "", onsubmit: function (e) { e.preventDefault(); go("sections"); } }, enterButton(),
+      note ? el("div", { class: "pin-below" }, el("p", { class: "pin-msg ok", text: note })) : null));
+  }
+  function renderGate() {
+    var state = !secLoaded ? "loading" : !S.security.hash ? "create" : isUnlocked() ? "open" : "locked";
+    if (state === gateState) return;
+    gateState = state;
+    var g = $("gate"), msg = el("p", { class: "pin-msg err", id: "pinMsg", "aria-live": "polite" });
+    if (state === "loading") { g.replaceChildren(el("p", { class: "pin-msg", text: "جارٍ التحميل…" })); return; }
+    if (state === "open") { renderGateOpen(); return; }
+    if (state === "create") {
+      var box = el("div", { class: "pin-box", id: "regBox", hidden: "" },
+        el("div", { class: "pin-pair" }, pinField("pinNew0", "الرقم السري"), pinField("pinNew1", "تأكيد الرقم السري")),
+        el("p", { class: "gate-hint", text: "من ٤ إلى ٨ أرقام، ويُطلب عند كل دخول." }),
+        el("button", { class: "enter small", type: "button", text: "حفظ الرقم السري", onclick: async function () {
+          var a = normPin($("pinNew0").value), b = normPin($("pinNew1").value);
+          if (!/^\d{4,8}$/.test(a)) { msg.textContent = "الرقم السري من ٤ إلى ٨ أرقام."; $("pinNew0").focus(); return; }
+          if (a !== b) { msg.textContent = "الرقمان غير متطابقين. أعد كتابة التأكيد."; $("pinNew1").value = ""; $("pinNew1").focus(); return; }
+          await setPin(a);
+          gateState = "open"; renderGateOpen("تم حفظ الرقم السري، وسيُطلب عند الدخول في المرات القادمة.");
+        } }),
+        msg);
+      function openReg(note) { box.hidden = false; regBtn.hidden = true; msg.textContent = note || ""; $("pinNew0").focus(); }
+      var regBtn = el("button", { class: "reg-btn", type: "button", onclick: function () { openReg(); } }, svg(LOCK_ICON), "تسجيل الرقم السري");
+      g.replaceChildren(el("form", { class: "pin-form", novalidate: "", onsubmit: function (e) { e.preventDefault(); go("sections"); } },
+        enterButton(), el("div", { class: "pin-below" }, regBtn, box)));
+      return;
+    }
+    g.replaceChildren(el("form", { class: "pin-form", novalidate: "", onsubmit: async function (e) {
+        e.preventDefault();
+        var inp = $("pinInput");
+        if (Date.now() < lockedUntil) { msg.textContent = "محاولات كثيرة. انتظر قليلًا ثم أعد المحاولة."; return; }
+        if (!inp.value) { msg.textContent = "اكتب الرقم السري ثم اضغط الدخول."; inp.focus(); return; }
+        if (await checkPin(normPin(inp.value))) { attempts = 0; setUnlocked(true); go("sections"); return; }
+        attempts++;
+        if (attempts >= 5) { lockedUntil = Date.now() + 30000; attempts = 0; msg.textContent = "خمس محاولات خاطئة. انتظر ٣٠ ثانية."; }
+        else msg.textContent = "الرقم السري غير صحيح.";
+        inp.value = ""; inp.focus();
+      } },
+      enterButton(), el("div", { class: "pin-box" }, pinField("pinInput", "الرقم السري"), msg)));
+  }
+
+  /* ---------- quotes (bottom centre of every page) ---------- */
+  var QUOTES = {"money": [["المال خادم جيد، لكنه سيد فاسد.", "فرانسيس بيكون"], ["ليس المهم كم من المال تجني، بل كم من المال تدخر، وكيف يعمل هذا المال من أجلك.", "روبرت كيوساكي"], ["الثروة هي القدرة على تجربة الحياة بالكامل.", "هنري ديفيد ثورو"], ["الشخص الذي لا يعرف أين يذهب ماله، سيجد نفسه دائماً يتساءل أين ذهب.", ""], ["الفقر ليس نقصاً في المال، بل هو غياب العقلية المنتجة.", ""], ["إذا كنت تعمل من أجل المال، فأنت تعطي القوة لصاحب العمل. إذا كان المال يعمل من أجلك، فأنت من يمتلك القوة.", ""], ["الثروة الحقيقية هي ما تملكه عندما تفقد كل أموالك.", ""], ["الاستثمار في المعرفة يدفع دائماً أفضل الفوائد.", "بنجامين فرانكلين"], ["الأغنياء يستثمرون في الوقت، والفقراء يستثمرون في المال.", ""], ["النجاح المالي هو عبارة عن ٢٠٪ معرفة و٨٠٪ سلوك وانضباط.", "ديف رامزي"]], "saving": [["لا تدخر ما تبقى بعد الإنفاق، بل أنفق ما تبقى بعد الادخار.", "وارن بافيت"], ["كل درهم تدخره هو جندي يعمل في جيش ثروتك المستقبلية.", ""], ["الادخار هو فن العيش بأقل مما تكسب لتتمكن من العيش بأكثر مما كنت تتخيل لاحقاً.", ""], ["الحرمان المؤقت من الكماليات هو الثمن الذي تدفعه مقابل الحرية الأبدية.", ""], ["الرجل الذي يشتري ما لا يحتاجه، يسرق نفسه.", "مثل سويدي"], ["حتى أصغر قطرات الماء يمكنها ملء الحوض، وكذلك أصغر المدخرات.", ""], ["الادخار لا يعني البخل، بل يعني الذكاء في إدارة الموارد.", ""], ["الفرق بين الغني والفقير هو أن الغني يدخر ثم ينفق، والفقير ينفق ثم يحاول الادخار.", ""], ["كن حذراً من النفقات الصغيرة؛ فتسريب بسيط يمكن أن يغرق سفينة كبيرة.", "بنجامين فرانكلين"], ["الادخار هو تأجيل المتعة العابرة من أجل أمان دائم.", ""]], "debt": [["الدين هو الوحش الذي يأكل مستقبلك قبل أن يصل إليك.", ""], ["من يقترض، يبيع حريته.", "أندرو كارنيجي"], ["الديون هي العبيد الجدد في العصر الحديث.", ""], ["أفضل وقت لسداد ديونك كان بالأمس، ثاني أفضل وقت هو الآن.", ""], ["لا تشترِ شيئاً لتبهر أشخاصاً لا تحبهم بأموال لا تملكها.", ""], ["القروض تجعل الحياة تبدو سهلة في البداية، لكنها تجعلها مستحيلة في النهاية.", ""], ["العيش بدون ديون هو أرقى أنواع الرفاهية.", ""], ["الفائدة البنكية على الديون لا تنام، لا تمرض، ولا تأخذ عطلة؛ إنها تلتهمك بصمت.", ""], ["السعادة لا تُشترى ببطاقة ائتمان.", ""], ["أن تنام جائعاً أفضل من أن تستيقظ مديوناً.", "مثل عربي قديم"]], "invest": [["السوق مصمم لنقل الأموال من الشخص غير الصبور إلى الشخص الصبور.", "وارن بافيت"], ["أفضل وقت لزراعة شجرة كان منذ ٢٠ عاماً، ثاني أفضل وقت هو الآن.", "مثل صيني"], ["لا تضع كل بيضك في سلة واحدة.", ""], ["الاستثمار هو عملية تحويل الأموال من شخص يريد المتعة الفورية إلى شخص يريد الأمان المستقبلي.", ""], ["الثروة لا تأتي من الدخل العالي، بل من الأصول التي تدر دخلاً.", ""], ["الخطر الحقيقي هو عدم المخاطرة بأي شيء.", ""], ["المستثمر الذكي هو من يشتري عندما يخاف الجميع، ويبيع عندما يطمع الجميع.", ""], ["المال هو بذرة، إذا زرعتها في أرض الاستثمار أثمرت غابة من الثروة.", ""], ["الفائدة المركبة هي الأعجوبة الثامنة في العالم.", "ألبرت أينشتاين"], ["الاستثمار الناجح يتطلب وقتاً وانضباطاً وصبراً.", ""]], "life": [["المال لا يغير الناس، بل يكشف حقيقتهم فقط.", ""], ["أن تكون غنياً هو أن تملك المال، أما أن تكون ثرياً فهو أن تملك الوقت.", ""], ["الفقير ليس من لا يملك قرشاً، بل من لا يملك حلماً.", ""], ["المال يعطيك خيارات، والخيارات تعطيك الحرية.", ""], ["اجعل هدفك هو الاستقلال المالي، وليس مجرد جمع الأرقام.", ""], ["لا تدع كسب العيش ينسيك بناء حياة.", ""], ["العطاء هو جزء من الثقافة المالية الناجحة؛ المال الذي يخرج بصدق يعود ببركة.", ""], ["التخطيط المالي هو الفرق بين الحلم والواقع.", ""], ["كن سيد مالك، ولا تسمح له بأن يصبح سيدك.", ""], ["الرحلة نحو الثراء تبدأ بخطوة واحدة: قرار بأنك تستحق حياة أفضل.", ""]]};
+  var QUOTE_FOR = { savings: ["saving"], debts: ["debt"], invest: ["invest"], zakat: ["life"], expenses: ["saving", "money"], estimated: ["saving", "money"], "est-fixed": ["saving"], "est-variable": ["saving"], actual: ["money"], "act-fixed": ["money"], "act-variable": ["money"], unscheduled: ["saving"], income: ["money"], summary: ["money", "life"], plan: ["money"], overview: ["money", "life"] };
+  var lastQuote = "";
+  function showQuote(view) {
+    var groups = QUOTE_FOR[view] || ["money", "life"], pool = [];
+    groups.forEach(function (g) { pool = pool.concat(QUOTES[g]); });
+    var q;
+    do { q = pool[Math.floor(Math.random() * pool.length)]; } while (pool.length > 1 && q[0] === lastQuote);
+    lastQuote = q[0];
+    $("quoteText").textContent = "«" + q[0] + "»";
+
+    fitQuote();
+  }
+  /* shrink the quote until it fits on one line; very long ones wrap at the smallest size */
+  function fitQuote() {
+    var p = $("quoteText"), size = 1.05;
+    p.classList.remove("wrap");
+    p.style.fontSize = size + "rem";
+    while (p.scrollWidth > p.clientWidth + 1 && size > 0.72) { size -= 0.03; p.style.fontSize = size.toFixed(2) + "rem"; }
+    if (p.scrollWidth > p.clientWidth + 1) p.classList.add("wrap");
+  }
+  window.addEventListener("resize", function () { if ($("quoteText").textContent) fitQuote(); });
+
+  /* ---------- calculations ---------- */
+  function sum(arr, f) { return arr.reduce(function (a, x) { var v = +f(x); return a + (isFinite(v) ? v : 0); }, 0); }
+  var amt = function (x) { return x.amount; };
+  function totals(key) {
+    var m = monthDoc(key);
+    var act = function (list) { return sum(list, function (it) { return m.actual[it.id] || 0; }); };
+    var t = {
+      income: sum(m.income, amt),
+      estFixed: sum(S.estimates.fixed, amt),
+      estVar: sum(S.estimates.variable, amt),
+      actFixed: act(S.estimates.fixed),
+      actVar: act(S.estimates.variable),
+      unsched: sum(m.unscheduled, amt),
+      debts: sum(S.debts.list, function (d) { return (+d.remaining || 0) > 0 ? d.installment : 0; }),
+      saving: +m.savingDeposit || 0
+    };
+    t.spent = t.actFixed + t.actVar + t.unsched + t.debts;
+    t.left = t.income - t.spent - t.saving;
+    return t;
+  }
+  function status(actual, est) {
+    if (!est) return actual ? { cls: "warn", text: "بلا تقدير" } : { cls: "ok", text: "—" };
+    var r = actual / est;
+    if (r > 1) return { cls: "bad", text: "تجاوز بـ " + money(actual - est) };
+    if (r >= 0.9) return { cls: "warn", text: "قارب الحد" };
+    return { cls: "ok", text: "ضمن التقدير" };
+  }
+
+  /* ---------- shared view pieces ---------- */
+  function header(title, backTo, backLabel) {
+    return el("div", { class: "inside-head" },
+      el("button", { class: "back", type: "button", onclick: function () { go(backTo); } }, svg(ICON_BACK), backLabel),
+      el("h2", { text: title }));
+  }
+  function monthBar() {
+    var p = S.month.split("-").map(Number);
+    function shift(d) {
+      var dt = new Date(p[0], p[1] - 1 + d, 1);
+      S.month = dt.getFullYear() + "-" + pad(dt.getMonth() + 1);
+      watchMonth(); render();
+    }
+    return el("div", { class: "monthbar", role: "group", "aria-label": "الشهر" },
+      el("button", { type: "button", "aria-label": "الشهر السابق", onclick: function () { shift(-1); } }, svg(ICON_BACK)),
+      el("strong", { text: fmtMonth.format(new Date(p[0], p[1] - 1, 1)) }),
+      el("button", { type: "button", "aria-label": "الشهر التالي", onclick: function () { shift(1); } }, svg(ICON_FWD)));
+  }
+  function amountInput(id, value, onval, label) {
+    return el("input", { class: "amt", id: id, inputmode: "decimal", autocomplete: "off", placeholder: "٠", "aria-label": label || "المبلغ",
+      value: value ? String(value) : "", disabled: S.readOnly ? "" : null,
+      oninput: function (e) { onval(parseAmount(e.target.value)); refreshTotals(); } });
+  }
+  function textInput(id, value, onval, label, ph) {
+    return el("input", { id: id, value: value || "", "aria-label": label, placeholder: ph || "", maxlength: "60", autocomplete: "off", disabled: S.readOnly ? "" : null,
+      oninput: function (e) { onval(e.target.value); } });
+  }
+  function select(id, options, value, onval, label) {
+    return el("select", { id: id, "aria-label": label, disabled: S.readOnly ? "" : null, onchange: function (e) { onval(e.target.value); } },
+      options.map(function (c) { var o = el("option", { value: c, text: c }); if (c === value) o.selected = true; return o; }));
+  }
+  function delBtn(label, fn) { return S.readOnly ? el("span") : el("button", { class: "x", type: "button", "aria-label": "حذف " + (label || "البند"), text: "×", onclick: fn }); }
+  function addBtn(text, list, make, path, focusPrefix) {
+    if (S.readOnly) return null;
+    return el("button", { class: "add", type: "button", text: "+ " + text, onclick: function () {
+      var it = make(); it.id = uid(); list.push(it); save(path); render();
+      var n = $(focusPrefix + it.id); if (n) n.focus();
+    } });
+  }
+  function remover(list, i, path) { return function () { list.splice(i, 1); save(path); render(); }; }
+  function totalRow(label, key) { return el("div", { class: "total" }, el("span", { text: label }), el("b", { class: "num", "data-total": key })); }
+  function tile(view, title, tag, fig) {
+    return el("a", { class: "tile", href: "#" + view }, el("h3", { text: title }), fig != null ? el("span", { class: "fig num", text: fig }) : null, tag ? el("span", { class: "tag", text: tag }) : null);
+  }
+  function notice() {
+    if (S.readOnly) return el("p", { class: "notice", text: "لديك صلاحية الاطلاع فقط، فلا يمكن تعديل الأرقام." });
+    return null;
+  }
+
+  /* ---------- views ---------- */
+  var VIEWS = {}, current = "home", totalFns = {};
+
+  VIEWS.sections = function () {
+    var t = totals();
+    var head = header("الأقسام", "home", "الرئيسية");
+    head.classList.add("has-lock");
+    head.append(el("a", { class: "lockbtn", href: "#pin", "aria-label": "الرقم السري", title: "الرقم السري" }, svg(LOCK_ICON)));
+    return [head,
+      el("div", { class: "grid" },
+        tile("income", "الدخل والموارد", "الراتب وأي دخل أو مورد إضافي", money(t.income)),
+        tile("expenses", "المصروفات", "التقديرية · الفعلية · غير المجدولة", money(t.actFixed + t.actVar + t.unsched)),
+        tile("debts", "الديون والالتزامات", "الأقساط الشهرية", money(t.debts)),
+        tile("savings", "الادخار", "إيداع الشهر وأهداف الادخار", money(t.saving)),
+        tile("invest", "الاستثمار", "المحفظة والربح والخسارة", money(sum(S.investments.list, function (x) { return x.current; }))),
+        tile("zakat", "الزكاة", "الأموال الزكوية والنصاب والواجب", null),
+        tile("summary", "الملخص المالي", "المخطط والفعلي · ملخص الشهر", null),
+        tile("backup", "النسخة الاحتياطية", "تصدير البيانات واستيرادها", null)),
+      notice()];
+  };
+
+  VIEWS.expenses = function () {
+    var t = totals();
+    return [header("المصروفات", "sections", "الأقسام"), monthBar(),
+      el("div", { class: "grid" },
+        tile("estimated", "المصروفات التقديرية", "الثابتة · غير الثابتة", money(t.estFixed + t.estVar)),
+        tile("actual", "المصروفات الفعلية", "الثابتة · غير الثابتة", money(t.actFixed + t.actVar)),
+        tile("unscheduled", "المصروفات غير المجدولة", "مصروفات طارئة خارج الخطة", money(t.unsched)))];
+  };
+
+  VIEWS.estimated = function () {
+    var t = totals();
+    return [header("المصروفات التقديرية", "expenses", "المصروفات"),
+      el("p", { class: "hint", text: "ما تتوقع صرفه كل شهر. يبقى التقدير نفسه لكل الأشهر حتى تغيّره." }),
+      el("div", { class: "grid" },
+        tile("est-fixed", "المصروفات الثابتة", "مبالغ لا تتغير من شهر لآخر", money(t.estFixed)),
+        tile("est-variable", "المصروفات غير الثابتة", "مبالغ تتغير حسب الاستهلاك", money(t.estVar)))];
+  };
+  function estList(kind, title) {
+    return function () {
+      var list = S.estimates[kind], path = "settings/estimates";
+      totalFns.est = function () { return money(sum(list, amt)); };
+      return [header(title, "estimated", "التقديرية"),
+        el("p", { class: "hint", text: "المبلغ التقديري الشهري لكل بند." }),
+        el("div", { class: "card" },
+          el("div", { class: "rows" }, list.map(function (it, i) {
+            return el("div", { class: "row" },
+              textInput("en-" + it.id, it.name, function (v) { it.name = v; save(path); }, "اسم البند", "اسم البند"),
+              amountInput("ea-" + it.id, it.amount, function (v) { it.amount = v; save(path); }, "المبلغ التقديري لـ " + it.name),
+              delBtn(it.name, remover(list, i, path)));
+          })),
+          addBtn("إضافة بند", list, function () { return { name: "", amount: 0 }; }, path, "en-"),
+          totalRow("المجموع الشهري", "est"))];
+    };
+  }
+  VIEWS["est-fixed"] = estList("fixed", "المصروفات الثابتة");
+  VIEWS["est-variable"] = estList("variable", "المصروفات غير الثابتة");
+
+  VIEWS.actual = function () {
+    var t = totals();
+    return [header("المصروفات الفعلية", "expenses", "المصروفات"), monthBar(),
+      el("p", { class: "hint", text: "ما صرفته فعلًا في الشهر المختار، لكل بند من بنود التقدير." }),
+      el("div", { class: "grid" },
+        tile("act-fixed", "المصروفات الثابتة", "من تقدير " + money(t.estFixed), money(t.actFixed)),
+        tile("act-variable", "المصروفات غير الثابتة", "من تقدير " + money(t.estVar), money(t.actVar)))];
+  };
+  function actList(kind, title) {
+    return function () {
+      var list = S.estimates[kind], m = monthDoc(), path = "months/" + S.month;
+      totalFns.act = function () { return money(sum(list, function (x) { return m.actual[x.id] || 0; })); };
+      totalFns.actEst = function () { return money(sum(list, amt)); };
+      return [header(title, "actual", "الفعلية"), monthBar(),
+        el("div", { class: "card" },
+          list.length ? el("div", { class: "rows" }, list.map(function (it) {
+            return el("div", { class: "row" },
+              el("div", { class: "lbl" }, it.name || "بند بلا اسم", el("span", { class: "sub num", text: "التقدير: " + money(it.amount) })),
+              amountInput("aa-" + it.id, m.actual[it.id], function (v) { m.actual[it.id] = v; save(path); }, "المصروف الفعلي لـ " + it.name),
+              el("span"));
+          })) : el("p", { class: "empty", text: "لا توجد بنود. أضفها أولًا من المصروفات التقديرية." }),
+          totalRow("مجموع الفعلي", "act"), totalRow("مجموع التقديري", "actEst")),
+        el("p", { class: "hint", text: "لإضافة بند أو تغيير اسمه، عدّله من المصروفات التقديرية." })];
+    };
+  }
+  VIEWS["act-fixed"] = actList("fixed", "المصروفات الثابتة");
+  VIEWS["act-variable"] = actList("variable", "المصروفات غير الثابتة");
+
+  VIEWS.unscheduled = function () {
+    var m = monthDoc(), path = "months/" + S.month, list = m.unscheduled;
+    totalFns.un = function () { return money(sum(list, amt)); };
+    return [header("المصروفات غير المجدولة", "expenses", "المصروفات"), monthBar(),
+      el("p", { class: "hint", text: "مصروفات لم تكن في الخطة، مثل عطل مفاجئ في السيارة أو زيارة طبية طارئة." }),
+      el("div", { class: "card" },
+        list.length ? el("div", { class: "rows" }, list.map(function (it, i) {
+          return el("div", { class: "item" },
+            el("div", { class: "item-head" },
+              textInput("un-" + it.id, it.name, function (v) { it.name = v; save(path); }, "وصف المصروف", "مثال: تغيير إطارات السيارة"),
+              delBtn(it.name, remover(list, i, path))),
+            el("div", { class: "subform" },
+              el("label", null, "التصنيف", select("uc-" + it.id, UNSCHED_CATS, it.category, function (v) { it.category = v; save(path); }, "التصنيف")),
+              el("label", null, "المبلغ", amountInput("ua-" + it.id, it.amount, function (v) { it.amount = v; save(path); }))));
+        })) : el("p", { class: "empty", text: "لا توجد مصروفات غير مجدولة في هذا الشهر." }),
+        addBtn("إضافة مصروف", list, function () { return { name: "", category: UNSCHED_CATS[0], amount: 0 }; }, path, "un-"),
+        totalRow("مجموع الشهر", "un"))];
+  };
+
+  VIEWS.debts = function () {
+    var list = S.debts.list, path = "settings/debts";
+    totalFns.dInst = function () { return money(sum(list, function (d) { return (+d.remaining || 0) > 0 ? d.installment : 0; })); };
+    totalFns.dRem = function () { return money(sum(list, function (d) { return d.remaining; })); };
+    return [header("الديون والالتزامات", "sections", "الأقسام"),
+      el("p", { class: "hint", text: "القروض والأقساط والالتزامات الشهرية. يُحسب القسط ضمن مصروفات كل شهر في الملخص المالي." }),
+      el("div", { class: "card" },
+        list.length ? el("div", { class: "rows" }, list.map(function (d, i) {
+          var foot = el("div", { class: "item-foot" });
+          function upd() {
+            var ml = d.installment > 0 && d.remaining > 0 ? Math.ceil(d.remaining / d.installment) : 0;
+            foot.textContent = ml ? "ينتهي السداد بعد " + fmt.format(ml) + " شهرًا تقريبًا" : "أدخل المتبقي والقسط لمعرفة مدة السداد";
+          }
+          upd();
+          return el("div", { class: "item" },
+            el("div", { class: "item-head" },
+              textInput("dn-" + d.id, d.name, function (v) { d.name = v; save(path); }, "اسم الالتزام", "مثال: قرض شخصي، قسط السيارة"),
+              delBtn(d.name, remover(list, i, path))),
+            el("div", { class: "subform" },
+              el("label", null, "الجهة", textInput("dc-" + d.id, d.creditor, function (v) { d.creditor = v; save(path); }, "الجهة", "البنك أو الشخص")),
+              el("label", null, "يوم السداد", textInput("dd-" + d.id, d.due, function (v) { d.due = v; save(path); }, "يوم السداد", "مثال: ٢٧ من كل شهر")),
+              el("label", null, "القسط الشهري", amountInput("di-" + d.id, d.installment, function (v) { d.installment = v; upd(); save(path); })),
+              el("label", null, "المبلغ المتبقي", amountInput("dr-" + d.id, d.remaining, function (v) { d.remaining = v; upd(); save(path); }))),
+            foot);
+        })) : el("p", { class: "empty", text: "لا توجد ديون أو التزامات مسجلة." }),
+        addBtn("إضافة التزام", list, function () { return { name: "", creditor: "", installment: 0, remaining: 0, due: "" }; }, path, "dn-"),
+        totalRow("مجموع الأقساط الشهرية", "dInst"), totalRow("مجموع المتبقي", "dRem"))];
+  };
+
+  VIEWS.savings = function () {
+    var m = monthDoc(), mpath = "months/" + S.month, goals = S.savings.goals, path = "settings/savings";
+    totalFns.sv = function () { var t = totals(); return t.income ? fmtPct.format(t.saving / t.income) + " من الدخل" : "أدخل دخل الشهر لحساب النسبة"; };
+    totalFns.svTarget = function () { var t = totals(), r = +S.savings.rate || 0; return !r ? "اكتب النسبة أعلاه" : t.income ? money(t.income * r / 100) : "أدخل دخل الشهر أولًا"; };
+    totalFns.svGap = function () { var t = totals(), r = +S.savings.rate || 0; if (!r || !t.income) return "—"; var d = t.saving - t.income * r / 100; return d >= 0 ? "تحقق الهدف" : "باقٍ " + money(-d); };
+    totalFns.svAll = function () { return money(sum(goals, function (g) { return g.saved; })); };
+    return [header("الادخار", "sections", "الأقسام"), monthBar(),
+      el("div", { class: "card" },
+        el("h3", { text: "نسبة الادخار المستهدفة" }),
+        el("div", { class: "row" }, el("span", { class: "lbl", text: "النسبة من الدخل (٪)" }),
+          el("input", { class: "amt", id: "sr", inputmode: "decimal", autocomplete: "off", placeholder: "مثال: ٢٠", "aria-label": "نسبة الادخار المستهدفة من الدخل", value: S.savings.rate ? String(S.savings.rate) : "", disabled: S.readOnly ? "" : null,
+            oninput: function (e) { S.savings.rate = Math.min(parseAmount(e.target.value), 100); save(path); refreshTotals(); } }), el("span", { text: "٪" })),
+        totalRow("المبلغ المستهدف هذا الشهر", "svTarget")),
+      el("div", { class: "card" },
+        el("h3", { text: "إيداع هذا الشهر" }),
+        el("div", { class: "row" }, el("span", { class: "lbl", text: "المبلغ المُدّخر" }), amountInput("sd", m.savingDeposit, function (v) { m.savingDeposit = v; save(mpath); }, "المبلغ المُدّخر هذا الشهر"), el("span")),
+        totalRow("النسبة الفعلية", "sv"), totalRow("مقارنة بالهدف", "svGap")),
+      el("div", { class: "card" },
+        el("h3", { text: "أهداف الادخار" }),
+        goals.length ? el("div", { class: "rows" }, goals.map(function (g, i) {
+          var fill = el("div", { class: "fill" }), foot = el("div", { class: "item-foot" });
+          function upd() {
+            var r = g.target > 0 ? Math.min(g.saved / g.target, 1) : 0;
+            fill.style.width = (r * 100).toFixed(1) + "%";
+            foot.textContent = g.target > 0 ? fmtPct.format(r) + " من الهدف · باقٍ " + money(Math.max(g.target - g.saved, 0)) : "حدد المبلغ المستهدف";
+          }
+          upd();
+          return el("div", { class: "item" },
+            el("div", { class: "item-head" },
+              textInput("gn-" + g.id, g.name, function (v) { g.name = v; save(path); }, "اسم الهدف", "مثال: دفعة سيارة"),
+              delBtn(g.name, remover(goals, i, path))),
+            el("div", { class: "subform" },
+              el("label", null, "المبلغ المستهدف", amountInput("gt-" + g.id, g.target, function (v) { g.target = v; upd(); save(path); })),
+              el("label", null, "المُدّخر حتى الآن", amountInput("gs-" + g.id, g.saved, function (v) { g.saved = v; upd(); save(path); }))),
+            el("div", { class: "track" }, fill), foot);
+        })) : el("p", { class: "empty", text: "لا توجد أهداف ادخار." }),
+        addBtn("إضافة هدف", goals, function () { return { name: "", target: 0, saved: 0 }; }, path, "gn-"),
+        totalRow("مجموع المُدّخر في الأهداف", "svAll"))];
+  };
+
+  VIEWS.invest = function () {
+    var list = S.investments.list, path = "settings/investments";
+    function pl() { var inv = sum(list, function (x) { return x.invested; }), cur = sum(list, function (x) { return x.current; }); return { inv: inv, cur: cur, d: cur - inv }; }
+    totalFns.ivIn = function () { return money(pl().inv); };
+    totalFns.ivCur = function () { return money(pl().cur); };
+    totalFns.ivPl = function () { var p = pl(); return (p.d < 0 ? "خسارة " : "ربح ") + money(Math.abs(p.d)) + (p.inv ? " (" + fmtPct.format(Math.abs(p.d) / p.inv) + ")" : ""); };
+    return [header("الاستثمار", "sections", "الأقسام"),
+      el("p", { class: "hint", text: "سجّل كل استثمار بالمبلغ الذي دفعته وقيمته الحالية لمعرفة الربح أو الخسارة." }),
+      el("div", { class: "card" },
+        list.length ? el("div", { class: "rows" }, list.map(function (x, i) {
+          var foot = el("div", { class: "item-foot" });
+          function upd() {
+            var d = (x.current || 0) - (x.invested || 0);
+            foot.textContent = x.invested ? (d < 0 ? "خسارة " : "ربح ") + money(Math.abs(d)) + " (" + fmtPct.format(Math.abs(d) / x.invested) + ")" : "أدخل المبلغ المستثمر والقيمة الحالية";
+            foot.className = "item-foot " + (!x.invested ? "" : d < 0 ? "neg" : "pos");
+          }
+          upd();
+          return el("div", { class: "item" },
+            el("div", { class: "item-head" },
+              textInput("vn-" + x.id, x.name, function (v) { x.name = v; save(path); }, "اسم الاستثمار", "مثال: صندوق أسهم محلية"),
+              delBtn(x.name, remover(list, i, path))),
+            el("div", { class: "subform" },
+              el("label", null, "النوع", select("vt-" + x.id, INVEST_TYPES, x.type, function (v) { x.type = v; save(path); }, "نوع الاستثمار")),
+              el("label", null, "المبلغ المستثمر", amountInput("vi-" + x.id, x.invested, function (v) { x.invested = v; upd(); save(path); })),
+              el("label", null, "القيمة الحالية", amountInput("vc-" + x.id, x.current, function (v) { x.current = v; upd(); save(path); }))),
+            foot);
+        })) : el("p", { class: "empty", text: "لا توجد استثمارات مسجلة." }),
+        addBtn("إضافة استثمار", list, function () { return { name: "", type: INVEST_TYPES[0], invested: 0, current: 0 }; }, path, "vn-"),
+        totalRow("إجمالي المستثمر", "ivIn"), totalRow("القيمة الحالية", "ivCur"), totalRow("الربح أو الخسارة", "ivPl"))];
+  };
+
+  VIEWS.zakat = function () {
+    var z = S.zakat, path = "settings/zakat";
+    function calc() {
+      var assets = sum(z.assets, amt), net = Math.max(assets - (+z.debtsDue || 0), 0);
+      var nisab = (+z.goldPrice || 0) * 85;
+      var due = nisab && net >= nisab ? net * 0.025 : 0;
+      return { assets: assets, net: net, nisab: nisab, due: due };
+    }
+    totalFns.zA = function () { return money(calc().assets); };
+    totalFns.zN = function () { return money(calc().net); };
+    totalFns.zNisab = function () { var c = calc(); return c.nisab ? money(c.nisab) : "أدخل سعر جرام الذهب"; };
+    totalFns.zDue = function () { var c = calc(); if (!c.nisab) return "—"; return c.net >= c.nisab ? money(c.due) : "لم يبلغ المال النصاب"; };
+    totalFns.zLeft = function () { var c = calc(); var d = c.due - (+z.paid || 0); return !c.due ? "—" : d > 0 ? "باقٍ " + money(d) : "أُخرجت كاملة"; };
+    return [header("الزكاة", "sections", "الأقسام"),
+      el("p", { class: "hint", text: "زكاة المال ربع العشر (٢٫٥٪) إذا بلغ صافي المال النصاب وحال عليه الحول الهجري. النصاب قيمة ٨٥ جرامًا من الذهب عيار ٢٤." }),
+      el("div", { class: "card" },
+        el("h3", { text: "الأموال الزكوية" }),
+        el("div", { class: "rows" }, z.assets.map(function (it, i) {
+          return el("div", { class: "row" },
+            textInput("zn-" + it.id, it.name, function (v) { it.name = v; save(path); }, "نوع المال", "نوع المال"),
+            amountInput("za-" + it.id, it.amount, function (v) { it.amount = v; save(path); }, "قيمة " + it.name),
+            delBtn(it.name, remover(z.assets, i, path)));
+        })),
+        addBtn("إضافة مال", z.assets, function () { return { name: "", amount: 0 }; }, path, "zn-"),
+        totalRow("مجموع الأموال", "zA")),
+      el("div", { class: "card" },
+        el("h3", { text: "الحساب" }),
+        el("div", { class: "subform" },
+          el("label", null, "الديون الحالّة عليك", amountInput("zd", z.debtsDue, function (v) { z.debtsDue = v; save(path); }, "الديون الحالّة عليك")),
+          el("label", null, "سعر جرام الذهب عيار ٢٤", amountInput("zg", z.goldPrice, function (v) { z.goldPrice = v; save(path); }, "سعر جرام الذهب")),
+          el("label", null, "تاريخ حولان الحول", textInput("zh", z.hawl, function (v) { z.hawl = v; save(path); }, "تاريخ حولان الحول", "مثال: ١ رمضان ١٤٤٨")),
+          el("label", null, "ما أخرجته من الزكاة", amountInput("zp", z.paid, function (v) { z.paid = v; save(path); }, "ما أخرجته من الزكاة"))),
+        totalRow("صافي المال بعد الديون", "zN"), totalRow("النصاب", "zNisab"), totalRow("الزكاة الواجبة", "zDue"), totalRow("المتبقي إخراجه", "zLeft")),
+      el("p", { class: "hint", text: "الحساب تقديري، وفي الحالات الخاصة يُرجع إلى أهل العلم." })];
+  };
+
+  VIEWS.pin = function () {
+    var has = !!S.security.hash, msg = el("p", { class: "pin-msg", "aria-live": "polite" });
+    function field(id, label) { return el("label", null, label, el("input", { id: id, type: "password", inputmode: "numeric", autocomplete: "off", maxlength: "8", class: "amt", disabled: S.readOnly ? "" : null })); }
+    function val(id) { var n = $(id); return n ? normPin(n.value) : ""; }
+    async function submit(e) {
+      e.preventDefault();
+      msg.className = "pin-msg err";
+      if (has && !(await checkPin(val("pinOld")))) { msg.textContent = "الرقم السري الحالي غير صحيح."; return; }
+      var n1 = val("pinNew"), n2 = val("pinNew2");
+      if (!/^\d{4,8}$/.test(n1)) { msg.textContent = "الرقم السري من ٤ إلى ٨ أرقام."; return; }
+      if (n1 !== n2) { msg.textContent = "الرقمان غير متطابقين. أعد كتابتهما."; return; }
+      await setPin(n1);
+      msg.className = "pin-msg ok"; msg.textContent = has ? "تم تغيير الرقم السري." : "تم وضع الرقم السري. سيُطلب منك عند كل دخول.";
+      setTimeout(render, 1200);
+    }
+    async function removePin() {
+      msg.className = "pin-msg err";
+      if (!(await checkPin(val("pinOld")))) { msg.textContent = "اكتب الرقم السري الحالي أولًا لإلغائه."; return; }
+      S.security = { hash: "", salt: "" }; flush("settings/security"); setUnlocked(false); gateState = "";
+      msg.className = "pin-msg ok"; msg.textContent = "تم إلغاء الرقم السري. صار الدخول مباشرًا بلا رقم.";
+      setTimeout(render, 1400);
+    }
+    return [header("الرقم السري", "sections", "الأقسام"),
+      el("p", { class: "hint", text: has ? "الرقم السري مفعّل، ويُطلب عند الدخول. تقدر تغيّره أو تلغيه من هنا." : "ضع رقمًا سريًا من ٤ إلى ٨ أرقام، ليُطلب عند كل دخول إلى ميزانيتي." }),
+      el("form", { class: "card", onsubmit: submit, novalidate: "" },
+        el("div", { class: "subform" },
+          has ? field("pinOld", "الرقم السري الحالي") : null,
+          field("pinNew", has ? "الرقم السري الجديد" : "الرقم السري"),
+          field("pinNew2", "تأكيد الرقم السري")),
+        msg,
+        S.readOnly ? null : el("div", { class: "pin-actions" },
+          el("button", { class: "enter small", type: "submit", text: has ? "تغيير الرقم" : "حفظ الرقم" }),
+          has ? el("button", { class: "add", type: "button", text: "إلغاء الرقم السري", onclick: removePin }) : null,
+          has ? el("button", { class: "add", type: "button", text: "قفل الآن", onclick: function () { setUnlocked(false); gateState = ""; go("home"); } }) : null)),
+      el("p", { class: "hint", text: "الرقم السري يحجب الصفحة عن من يفتحها على جهازك. إن نسيته، اطلب من Claude في هذا المشروع إلغاءه." })];
+  };
+
+  VIEWS.summary = function () {
+    var t = totals();
+    return [header("الملخص المالي", "sections", "الأقسام"), monthBar(),
+      el("div", { class: "grid" },
+        tile("plan", "المخطط والفعلي", "مقارنة التقدير بالصرف الفعلي", money(t.actFixed + t.actVar) + " / " + money(t.estFixed + t.estVar)),
+        tile("overview", "ملخص الشهر", "أين ذهب المال وكم بقي", money(t.left)))];
+  };
+
+  VIEWS.income = function () {
+    var m = monthDoc(), path = "months/" + S.month, list = m.income;
+    totalFns.inc = function () { return money(sum(list, amt)); };
+    return [header("الدخل والموارد", "sections", "الأقسام"), monthBar(),
+      el("div", { class: "card" },
+        list.length ? el("div", { class: "rows" }, list.map(function (it, i) {
+          return el("div", { class: "row" },
+            textInput("in-" + it.id, it.name, function (v) { it.name = v; save(path); }, "مصدر الدخل", "مصدر الدخل"),
+            amountInput("ia-" + it.id, it.amount, function (v) { it.amount = v; save(path); }, "مبلغ " + it.name),
+            delBtn(it.name, remover(list, i, path)));
+        })) : el("p", { class: "empty", text: "لا يوجد دخل مسجل لهذا الشهر." }),
+        addBtn("إضافة مصدر دخل", list, function () { return { name: "", amount: 0 }; }, path, "in-"),
+        totalRow("مجموع دخل الشهر", "inc"))];
+  };
+
+  VIEWS.plan = function () {
+    var m = monthDoc(), t = totals();
+    function block(title, list) {
+      var est = sum(list, amt), act = sum(list, function (x) { return m.actual[x.id] || 0; });
+      var rows = list.filter(function (x) { return x.amount || m.actual[x.id]; }).map(function (x) {
+        var a = +(m.actual[x.id] || 0), e = +x.amount || 0, s = status(a, e);
+        var w = e ? Math.min(a / e, 1) * 100 : (a ? 100 : 0);
+        return el("div", { class: "cmp" },
+          el("div", { class: "cmp-top" }, el("span", { text: x.name || "بند بلا اسم" }), el("span", { class: "chip " + s.cls, text: s.text })),
+          el("div", { class: "track" }, el("div", { class: "fill " + (s.cls === "ok" ? "" : s.cls), style: "width:" + w.toFixed(1) + "%" })),
+          el("div", { class: "cmp-nums num", text: "الفعلي " + money(a) + " من تقدير " + money(e) }));
+      });
+      var s = status(act, est);
+      return el("div", { class: "card" },
+        el("div", { class: "cmp-top" }, el("h3", { text: title }), el("span", { class: "chip " + s.cls, text: s.text })),
+        rows.length ? el("div", null, rows) : el("p", { class: "empty", text: "لا توجد مبالغ مسجلة بعد." }),
+        el("div", { class: "total" }, el("span", { text: "الفعلي / التقديري" }), el("b", { class: "num", text: money(act) + " / " + money(est) })));
+    }
+    var diff = (t.estFixed + t.estVar) - (t.actFixed + t.actVar);
+    return [header("المخطط والفعلي", "summary", "الملخص"), monthBar(),
+      el("div", { class: "kpis" },
+        el("div", { class: "kpi" }, el("span", { text: "التقديري" }), el("b", { class: "num", text: money(t.estFixed + t.estVar) })),
+        el("div", { class: "kpi" }, el("span", { text: "الفعلي" }), el("b", { class: "num", text: money(t.actFixed + t.actVar) })),
+        el("div", { class: "kpi" }, el("span", { text: diff >= 0 ? "أقل من التقدير بـ" : "تجاوز التقدير بـ" }), el("b", { class: "num " + (diff >= 0 ? "pos" : "neg"), text: money(Math.abs(diff)) }))),
+      block("المصروفات الثابتة", S.estimates.fixed),
+      block("المصروفات غير الثابتة", S.estimates.variable),
+      el("p", { class: "hint", text: "المصروفات غير المجدولة هذا الشهر " + money(t.unsched) + "، وهي خارج التقدير." })];
+  };
+
+  VIEWS.overview = function () {
+    var m = monthDoc(), t = totals();
+    var parts = [
+      { k: "مصروفات ثابتة", v: t.actFixed, c: "#6f9ee8" },
+      { k: "مصروفات غير ثابتة", v: t.actVar, c: "#b58be0" },
+      { k: "مصروفات غير مجدولة", v: t.unsched, c: "#e58272" },
+      { k: "أقساط الديون", v: t.debts, c: "#e3b552" },
+      { k: "الادخار", v: t.saving, c: "#5cc29a" },
+      { k: "المتبقي", v: Math.max(t.left, 0), c: "#4a6795" }
+    ];
+    var base = Math.max(t.income, t.spent + t.saving, 1);
+    var tips = [];
+    S.estimates.fixed.concat(S.estimates.variable)
+      .map(function (x) { return { n: x.name, e: +x.amount || 0, d: (+(m.actual[x.id] || 0)) - (+x.amount || 0) }; })
+      .filter(function (x) { return x.e > 0 && x.d > 0; }).sort(function (a, b) { return b.d - a.d; }).slice(0, 3)
+      .forEach(function (x) { tips.push("بند «" + x.n + "» تجاوز التقدير بـ " + money(x.d) + ". ابدأ بمراجعته."); });
+    if (t.income && t.unsched / t.income > 0.1) tips.push("المصروفات غير المجدولة تجاوزت ١٠٪ من الدخل. صندوق طوارئ يغطي ثلاثة أشهر يخفف أثرها.");
+    if (t.income && t.debts / t.income > 0.33) tips.push("أقساط الديون أكثر من ثلث الدخل. تجنّب أي التزام جديد حتى تنخفض.");
+    var goalRate = (+S.savings.rate || 10) / 100;
+    if (t.income && t.saving / t.income < goalRate) tips.push("الادخار هذا الشهر " + fmtPct.format(t.saving / t.income) + " من الدخل، والهدف " + fmtPct.format(goalRate) + ". جرّب تحويل المبلغ أول الشهر.");
+    if (t.left < 0) tips.push("المصروفات والادخار تجاوزت الدخل بـ " + money(-t.left) + " هذا الشهر.");
+    return [header("ملخص الشهر", "summary", "الملخص"), monthBar(),
+      el("div", { class: "kpis" },
+        el("div", { class: "kpi" }, el("span", { text: "الدخل" }), el("b", { class: "num", text: money(t.income) })),
+        el("div", { class: "kpi" }, el("span", { text: "المصروفات" }), el("b", { class: "num", text: money(t.spent) })),
+        el("div", { class: "kpi" }, el("span", { text: "المتبقي بعد الادخار" }), el("b", { class: "num " + (t.left < 0 ? "neg" : "pos"), text: money(t.left) }))),
+      el("div", { class: "card" },
+        el("h3", { text: "أين ذهب المال" }),
+        el("div", { class: "stack", role: "img", "aria-label": "توزيع الدخل على المصروفات والادخار والمتبقي" },
+          parts.filter(function (p) { return p.v > 0; }).map(function (p) { return el("i", { style: "width:" + (p.v / base * 100).toFixed(2) + "%;background:" + p.c, title: p.k }); })),
+        el("div", { class: "legend" }, parts.map(function (p) {
+          return el("div", null, el("i", { style: "background:" + p.c }), el("span", { text: p.k }), el("b", { class: "num", text: money(p.v) }), el("span", { class: "pct num", text: t.income ? fmtPct.format(p.v / t.income) : "—" }));
+        }))),
+      el("div", { class: "card" },
+        el("h3", { text: "مواضع التوفير" }),
+        tips.length ? el("ul", { class: "tips" }, tips.map(function (x) { return el("li", { text: x }); }))
+          : el("p", { class: "hint", text: t.income ? "لا ملاحظات هذا الشهر. الصرف ضمن التقدير." : "أدخل دخل الشهر والمصروفات الفعلية لتظهر هنا الملاحظات." }))];
+  };
+
+  /* ---------- backup (offline app keeps data on this device only) ---------- */
+  function allData() {
+    var data = {};
+    try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k.indexOf(LS) === 0 && k !== LS + "unlocked") data[k.slice(LS.length)] = JSON.parse(localStorage.getItem(k)); } } catch (e) {}
+    return data;
+  }
+  VIEWS.backup = function () {
+    var msg = el("p", { class: "pin-msg", "aria-live": "polite" }), pendingImport = null;
+    var confirmBox = el("div", { class: "pin-actions", hidden: "" });
+    function exportFile() {
+      var d = new Date(), name = "mizan-backup-" + d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + ".json";
+      var blob = new Blob([JSON.stringify({ app: "mizan", version: 1, exported: d.toISOString(), data: allData() }, null, 1)], { type: "application/json" });
+      var a = el("a", { href: URL.createObjectURL(blob), download: name }); document.body.append(a); a.click(); a.remove();
+      try { localStorage.setItem(LS + "lastBackup", JSON.stringify(d.toISOString())); } catch (e) {}
+      msg.className = "pin-msg ok"; msg.textContent = "تم إنشاء الملف «" + name + "». احفظه في مكان آمن، مثل iCloud أو Google Drive.";
+    }
+    function pick(e) {
+      var f = e.target.files && e.target.files[0]; if (!f) return;
+      var r = new FileReader();
+      r.onload = function () {
+        try { var j = JSON.parse(r.result); if (!j || j.app !== "mizan" || typeof j.data !== "object") throw 0; pendingImport = j;
+          msg.className = "pin-msg err"; msg.textContent = "سيحل محتوى الملف (المحفوظ بتاريخ " + String(j.exported || "").slice(0, 10) + ") محل كل بياناتك الحالية في هذا الجهاز. هل تريد المتابعة؟";
+          confirmBox.hidden = false;
+        } catch (x) { msg.className = "pin-msg err"; msg.textContent = "هذا الملف ليس نسخة احتياطية من ميزان."; }
+      };
+      r.readAsText(f);
+    }
+    function doImport() {
+      try {
+        Object.keys(localStorage).filter(function (k) { return k.indexOf(LS) === 0; }).forEach(function (k) { localStorage.removeItem(k); });
+        Object.keys(pendingImport.data).forEach(function (k) { localStorage.setItem(LS + k, JSON.stringify(pendingImport.data[k])); });
+      } catch (e) { msg.textContent = "تعذر الاستيراد. تأكد من وجود مساحة كافية في الجهاز."; return; }
+      location.hash = "home"; location.reload();
+    }
+    confirmBox.append(el("button", { class: "enter small", type: "button", text: "نعم، استورد", onclick: doImport }),
+      el("button", { class: "add", type: "button", text: "إلغاء", onclick: function () { pendingImport = null; confirmBox.hidden = true; msg.textContent = ""; } }));
+    var last = lsGet("lastBackup");
+    return [header("النسخة الاحتياطية", "sections", "الأقسام"),
+      el("p", { class: "hint", text: "بياناتك محفوظة في هذا الجهاز فقط. صدّر نسخة احتياطية كل شهر، واحتفظ بها خارج الجهاز، لتسترجعها إذا غيّرت جوالك أو حذفت التطبيق." }),
+      el("div", { class: "card" },
+        el("h3", { text: "تصدير" }),
+        el("p", { class: "hint", text: last ? "آخر نسخة: " + new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { dateStyle: "long" }).format(new Date(last)) : "لم تُصدَّر أي نسخة بعد." }),
+        el("button", { class: "enter small", type: "button", text: "تصدير نسخة احتياطية", onclick: exportFile })),
+      el("div", { class: "card" },
+        el("h3", { text: "استيراد" }),
+        el("label", { class: "add", for: "importFile", text: "اختيار ملف النسخة الاحتياطية" }),
+        el("input", { id: "importFile", type: "file", accept: ".json,application/json", hidden: "", onchange: pick }),
+        msg, confirmBox)];
+  };
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  if ("serviceWorker" in navigator && location.protocol === "https:") { try { navigator.serviceWorker.register("sw.js"); } catch (e) {} }
+
+  /* ---------- routing ---------- */
+  function refreshTotals() {
+    document.querySelectorAll("[data-total]").forEach(function (n) {
+      var f = totalFns[n.getAttribute("data-total")];
+      if (f) n.textContent = f();
+    });
+  }
+  function render() {
+    var v = location.hash.slice(1);
+    if (!VIEWS[v]) v = "home";
+    if (v !== "home" && (!secLoaded || !isUnlocked())) v = "home";
+    var changed = v !== current;
+    if (changed || !$("quoteText").textContent) showQuote(v);
+    current = v;
+    $("home").hidden = v !== "home";
+    $("view").hidden = v === "home";
+    if (v === "home") renderGate();
+    else {
+      totalFns = {};
+      $("view").replaceChildren.apply($("view"), [].concat(VIEWS[v]()).filter(Boolean));
+      refreshTotals();
+    }
+    if (changed) window.scrollTo(0, 0);
+  }
+  function go(v) { location.hash = v; render(); }
+  window.addEventListener("hashchange", render);
+  render();
+  boot();
+})();
+</script>
+</body>
+</html>
