@@ -288,6 +288,16 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   var uid = function () { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); };
   var pad = function (n) { return String(n).padStart(2, "0"); };
   var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
+  /* every field shows English digits as you type, even from an Arabic keyboard; runs before the field's own handler */
+  document.addEventListener("input", function (e) {
+    var f = e.target;
+    if (e.isComposing || !f || (f.tagName !== "INPUT" && f.tagName !== "TEXTAREA") || /^(date|checkbox|radio)$/.test(f.type)) return;
+    var re = f.classList.contains("amt") ? /[٠-٩۰-۹٫٬]/g : /[٠-٩۰-۹]/g;
+    if (!re.test(f.value)) return;
+    var pos = f.selectionStart;
+    f.value = f.value.replace(re, function (c) { return c === "٫" ? "." : c === "٬" ? "," : String("٠١٢٣٤٥٦٧٨٩".indexOf(c) + 1 ? "٠١٢٣٤٥٦٧٨٩".indexOf(c) : "۰۱۲۳۴۵۶۷۸۹".indexOf(c)); });
+    try { if (pos != null) f.setSelectionRange(pos, pos); } catch (x) {}
+  }, true);
   function parseAmount(v) {
     var s = String(v == null ? "" : v).replace(/[٠-٩]/g, function (d) { return "٠١٢٣٤٥٦٧٨٩".indexOf(d); }).replace(/[۰-۹]/g, function (d) { return "۰۱۲۳۴۵۶۷۸۹".indexOf(d); }).replace(/\s+/g, "");
     /* the last separator followed by one or two digits is the halala point (any mark the keypad types: "." "," "٫" …); every other separator groups thousands */
@@ -857,7 +867,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 30" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 31" })];
   };
   VIEWS.budget = function () {
     var t = totals();
