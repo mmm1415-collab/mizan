@@ -129,6 +129,12 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 .item { border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 8px; background: var(--panel-2); }
 .item input, .item select { background: var(--panel); }
 .item-head { display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 8px; align-items: center; }
+.row.grip-on { grid-template-columns: 28px minmax(0, 1fr) 110px 32px; }
+.item-head.grip-on { grid-template-columns: 28px minmax(0, 1fr) 32px; }
+.grip { width: 28px; height: 40px; border: 0; background: none; color: var(--gold); cursor: grab; touch-action: none; display: grid; place-items: center; padding: 0; border-radius: 6px; -webkit-user-select: none; user-select: none; }
+.grip svg { width: 18px; height: 18px; }
+.rows > .dragging { position: relative; z-index: 5; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); outline: 1px solid var(--gold); border-radius: 8px; background: var(--panel-2); }
+body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbing; }
 .item-foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-size: .85rem; color: var(--muted); }
 
 .track { height: 8px; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
@@ -261,6 +267,10 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     clearTimeout(timers[path]);
     timers[path] = setTimeout(function () { flush(path); }, 600);
   }
+  /* write pending changes at once when the app is hidden or closed */
+  function flushAll() { Object.keys(pending).forEach(function (p) { if (pending[p]) { clearTimeout(timers[p]); flush(p); } }); }
+  window.addEventListener("pagehide", flushAll);
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") flushAll(); });
   function flush(path) {
     var data = clone(dataFor(path));
     if (!S.db) { lsSet(path, data); pending[path] = false; return; }
@@ -473,6 +483,70 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
       var n = $(focusPrefix + it.id); if (n) n.focus();
     } });
   }
+  /* drag rows by their grip (mouse or touch) or move them with the arrow keys */
+  var GRIP_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
+  function sortable(list, path, children) {
+    var box = el("div", { class: "rows" });
+    function commit() {
+      var order = [].map.call(box.children, function (n) { return list[+n.dataset.idx]; });
+      var moved = order.some(function (x, k) { return x !== list[k]; });
+      if (moved) { list.splice.apply(list, [0, list.length].concat(order)); save(path); }
+      render();
+    }
+    children.forEach(function (row, i) {
+      row.dataset.idx = i;
+      box.appendChild(row);
+      if (S.readOnly || list.length < 2) return;
+      var target = row.classList.contains("item") ? row.querySelector(".item-head") : row;
+      var grip = el("button", { class: "grip", type: "button", "aria-label": "اسحب لتغيير الترتيب، أو استخدم الأسهم" });
+      grip.appendChild(svg(GRIP_ICON));
+      target.classList.add("grip-on");
+      target.insertBefore(grip, target.firstChild);
+      grip.addEventListener("keydown", function (e) {
+        var dir = e.key === "ArrowUp" ? -1 : e.key === "ArrowDown" ? 1 : 0;
+        var j = [].indexOf.call(box.children, row) + dir;
+        if (!dir || j < 0 || j >= box.children.length) return;
+        e.preventDefault();
+        box.insertBefore(row, dir < 0 ? box.children[j] : box.children[j].nextSibling);
+        var key = list[+row.dataset.idx].id;
+        commit();
+        setTimeout(function () { var g = document.querySelector("[data-grip='" + key + "']"); if (g) g.focus(); }, 0);
+      });
+      grip.setAttribute("data-grip", list[i].id);
+      grip.addEventListener("pointerdown", function (e) {
+        if (e.button > 0) return;
+        e.preventDefault();
+        grip.setPointerCapture(e.pointerId);
+        var startY = e.pageY, lastClientY = e.clientY, raf = 0;
+        row.classList.add("dragging"); document.body.classList.add("drag-active");
+        function place() {
+          var y = lastClientY + window.scrollY;
+          row.style.transform = "translateY(" + (y - startY) + "px)";
+          var r = row.getBoundingClientRect(), mid = r.top + r.height / 2, sib, before = row.offsetTop;
+          if ((sib = row.previousElementSibling) && mid < sib.getBoundingClientRect().top + sib.offsetHeight / 2) box.insertBefore(row, sib);
+          else if ((sib = row.nextElementSibling) && mid > sib.getBoundingClientRect().top + sib.offsetHeight / 2) box.insertBefore(row, sib.nextSibling);
+          else return;
+          startY += row.offsetTop - before;
+          row.style.transform = "translateY(" + (y - startY) + "px)";
+        }
+        function tick() {
+          var edge = 70, v = lastClientY < edge ? -8 : lastClientY > window.innerHeight - edge ? 8 : 0;
+          if (v) { window.scrollBy(0, v); place(); }
+          raf = requestAnimationFrame(tick);
+        }
+        raf = requestAnimationFrame(tick);
+        function move(ev) { lastClientY = ev.clientY; place(); }
+        function end() {
+          cancelAnimationFrame(raf);
+          grip.removeEventListener("pointermove", move); grip.removeEventListener("pointerup", end); grip.removeEventListener("pointercancel", end);
+          row.classList.remove("dragging"); row.style.transform = ""; document.body.classList.remove("drag-active");
+          commit();
+        }
+        grip.addEventListener("pointermove", move); grip.addEventListener("pointerup", end); grip.addEventListener("pointercancel", end);
+      });
+    });
+    return box;
+  }
   function remover(list, i, path) { return function () { list.splice(i, 1); save(path); render(); }; }
   function totalRow(label, key) { return el("div", { class: "total" }, el("span", { text: label }), el("b", { class: "num", "data-total": key })); }
   function tile(view, title, tag, fig) {
@@ -526,7 +600,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
       totalFns.act = function () { return money(sum(list, function (x) { return m.actual[x.id] || 0; })); };
       return [header(title, "actual", "الفعلية"), monthBar(),
         el("div", { class: "card" },
-          list.length ? el("div", { class: "rows" }, list.map(function (it, i) {
+          list.length ? sortable(list, itemsPath, list.map(function (it, i) {
             return el("div", { class: "row" },
               textInput("an-" + it.id, it.name, function (v) { it.name = v; save(itemsPath); }, "اسم البند", "اسم البند"),
               amountInput("aa-" + it.id, m.actual[it.id], function (v) { m.actual[it.id] = v; save(path); }, "المصروف الفعلي لـ " + it.name),
@@ -546,7 +620,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     return [header("المصروفات غير المجدولة", "expenses", "المصروفات"), monthBar(),
       el("p", { class: "hint", text: "مصروفات لم تكن في الخطة، مثل عطل مفاجئ في السيارة أو زيارة طبية طارئة." }),
       el("div", { class: "card" },
-        list.length ? el("div", { class: "rows" }, list.map(function (it, i) {
+        list.length ? sortable(list, path, list.map(function (it, i) {
           return el("div", { class: "item" },
             el("div", { class: "item-head" },
               textInput("un-" + it.id, it.name, function (v) { it.name = v; save(path); }, "وصف المصروف", "مثال: تغيير إطارات السيارة"),
@@ -566,7 +640,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     return [header("الديون والالتزامات", "sections", "الأقسام"),
       el("p", { class: "hint", text: "القروض والأقساط والالتزامات الشهرية. يُحسب القسط ضمن مصروفات كل شهر في الملخص المالي." }),
       el("div", { class: "card" },
-        list.length ? el("div", { class: "rows" }, list.map(function (d, i) {
+        list.length ? sortable(list, path, list.map(function (d, i) {
           var foot = el("div", { class: "item-foot" });
           function upd() {
             var ml = d.installment > 0 && d.remaining > 0 ? Math.ceil(d.remaining / d.installment) : 0;
@@ -607,7 +681,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
         totalRow("النسبة الفعلية", "sv"), totalRow("مقارنة بالهدف", "svGap")),
       el("div", { class: "card" },
         el("h3", { text: "أهداف الادخار" }),
-        goals.length ? el("div", { class: "rows" }, goals.map(function (g, i) {
+        goals.length ? sortable(goals, path, goals.map(function (g, i) {
           var fill = el("div", { class: "fill" }), foot = el("div", { class: "item-foot" });
           function upd() {
             var r = g.target > 0 ? Math.min(g.saved / g.target, 1) : 0;
@@ -637,7 +711,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     return [header("الاستثمار", "sections", "الأقسام"),
       el("p", { class: "hint", text: "سجّل كل استثمار بالمبلغ الذي دفعته وقيمته الحالية لمعرفة الربح أو الخسارة." }),
       el("div", { class: "card" },
-        list.length ? el("div", { class: "rows" }, list.map(function (x, i) {
+        list.length ? sortable(list, path, list.map(function (x, i) {
           var foot = el("div", { class: "item-foot" });
           function upd() {
             var d = (x.current || 0) - (x.invested || 0);
@@ -676,7 +750,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
       el("p", { class: "hint", text: "زكاة المال ربع العشر (٢٫٥٪) إذا بلغ صافي المال النصاب وحال عليه الحول الهجري. النصاب قيمة ٨٥ جرامًا من الذهب عيار ٢٤." }),
       el("div", { class: "card" },
         el("h3", { text: "الأموال الزكوية" }),
-        el("div", { class: "rows" }, z.assets.map(function (it, i) {
+        sortable(z.assets, path, z.assets.map(function (it, i) {
           return el("div", { class: "row" },
             textInput("zn-" + it.id, it.name, function (v) { it.name = v; save(path); }, "نوع المال", "نوع المال"),
             amountInput("za-" + it.id, it.amount, function (v) { it.amount = v; save(path); }, "قيمة " + it.name),
@@ -744,7 +818,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     totalFns.inc = function () { return money(sum(list, amt)); };
     return [header("الدخل والموارد", "sections", "الأقسام"), monthBar(),
       el("div", { class: "card" },
-        list.length ? el("div", { class: "rows" }, list.map(function (it, i) {
+        list.length ? sortable(list, path, list.map(function (it, i) {
           return el("div", { class: "row" },
             textInput("in-" + it.id, it.name, function (v) { it.name = v; save(path); }, "مصدر الدخل", "مصدر الدخل"),
             amountInput("ia-" + it.id, it.amount, function (v) { it.amount = v; save(path); }, "مبلغ " + it.name),
