@@ -281,14 +281,15 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { maximumFractionDigits: 2 });
+  var fmtAmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   var fmtPct = new Intl.NumberFormat("ar-SA-u-nu-latn", { style: "percent", maximumFractionDigits: 0 });
   var fmtMonth = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", { month: "long", year: "numeric" });
-  var money = function (n) { return fmt.format(Math.round((n || 0) * 100) / 100) + " ريال"; };
+  var money = function (n) { return fmtAmt.format(Math.round((n || 0) * 100) / 100) + " ريال"; };
   var uid = function () { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); };
   var pad = function (n) { return String(n).padStart(2, "0"); };
   var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
   function parseAmount(v) {
-    var s = String(v == null ? "" : v).replace(/[٠-٩]/g, function (d) { return "٠١٢٣٤٥٦٧٨٩".indexOf(d); }).replace(/[٫,]/g, ".").replace(/[^\d.]/g, "");
+    var s = String(v == null ? "" : v).replace(/[٠-٩]/g, function (d) { return "٠١٢٣٤٥٦٧٨٩".indexOf(d); }).replace(/[,٬]/g, "").replace(/٫/g, ".").replace(/[^\d.]/g, "");
     var n = parseFloat(s);
     return isFinite(n) ? Math.round(n * 100) / 100 : 0;
   }
@@ -610,9 +611,10 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("button", { type: "button", "aria-label": "الشهر التالي", onclick: function () { shift(1); } }, svg(ICON_FWD)));
   }
   function amountInput(id, value, onval, label) {
-    return el("input", { class: "amt", id: id, inputmode: "decimal", autocomplete: "off", placeholder: "0", "aria-label": label || "المبلغ",
-      value: value ? String(value) : "", disabled: S.readOnly ? "" : null,
-      oninput: function (e) { onval(parseAmount(e.target.value)); refreshTotals(); } });
+    return el("input", { class: "amt", id: id, inputmode: "decimal", autocomplete: "off", placeholder: "0.00", "aria-label": label || "المبلغ",
+      value: value ? fmtAmt.format(value) : "", disabled: S.readOnly ? "" : null,
+      oninput: function (e) { onval(parseAmount(e.target.value)); refreshTotals(); },
+      onblur: function (e) { if (e.target.value.trim()) e.target.value = fmtAmt.format(parseAmount(e.target.value)); } });
   }
   function textInput(id, value, onval, label, ph) {
     return el("input", { id: id, value: value || "", "aria-label": label, placeholder: ph || "", maxlength: "60", autocomplete: "off", disabled: S.readOnly ? "" : null,
@@ -1119,15 +1121,15 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           el("thead", null, el("tr", null, el("th", { text: "الرقم" }), el("th", { text: "الاسم" }), el("th", { text: "المدخر" }), el("th", { text: "المسحوب" }), el("th", { text: "الرصيد" }))),
           el("tbody", null, list.map(function (it, i) {
             var inn = sum(months, function (r) { return savedOf(r.m, it.id); }), o = itemOut(it.id);
-            return el("tr", null, el("td", { class: "num", text: fmt.format(i + 1) }), el("td", { text: it.name || "بلا اسم" }), el("td", { class: "num", text: fmt.format(inn) }), el("td", { class: "num", text: fmt.format(o) }), el("td", { class: "num", text: fmt.format(inn - o) }));
+            return el("tr", null, el("td", { class: "num", text: fmt.format(i + 1) }), el("td", { text: it.name || "بلا اسم" }), el("td", { class: "num", text: fmtAmt.format(inn) }), el("td", { class: "num", text: fmtAmt.format(o) }), el("td", { class: "num", text: fmtAmt.format(inn - o) }));
           })),
-          el("tfoot", null, el("tr", null, el("td"), el("td", { text: "المجموع" }), el("td", { class: "num", text: fmt.format(all) }), el("td", { class: "num", text: fmt.format(out) }), el("td", { class: "num", text: fmt.format(all - out) }))))),
+          el("tfoot", null, el("tr", null, el("td"), el("td", { text: "المجموع" }), el("td", { class: "num", text: fmtAmt.format(all) }), el("td", { class: "num", text: fmtAmt.format(out) }), el("td", { class: "num", text: fmtAmt.format(all - out) }))))),
         el("p", { class: "hint", text: "المبالغ بالريال." })),
       el("div", { class: "card" },
         el("h3", { text: "حسب الشهر" }),
         months.length ? el("div", { class: "ctable-wrap" }, el("table", { class: "ctable" },
           el("thead", null, el("tr", null, el("th", { text: "الشهر" }), el("th", { text: "المدخر" }), el("th", { text: "المسحوب" }))),
-          el("tbody", null, months.slice().reverse().map(function (r) { return el("tr", null, el("td", { text: monthName(r.k, true) }), el("td", { class: "num", text: fmt.format(r.v) }), el("td", { class: "num", text: fmt.format(r.w) })); }))))
+          el("tbody", null, months.slice().reverse().map(function (r) { return el("tr", null, el("td", { text: monthName(r.k, true) }), el("td", { class: "num", text: fmtAmt.format(r.v) }), el("td", { class: "num", text: fmtAmt.format(r.w) })); }))))
           : el("p", { class: "empty", text: "لم تسجّل أي ادخار بعد." }))];
   };
 
@@ -1331,8 +1333,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       var ml = +d.installment > 0 && +d.remaining > 0 ? Math.ceil(d.remaining / d.installment) : 0;
       if (ml > months) { months = ml; lastName = d.name || d.creditor || ""; }
       var tot = +d.total || +d.remaining || 0;
-      return el("tr", null, el("td", { text: d.name || d.creditor || "بلا اسم" }), el("td", { text: d.creditor || "—" }), el("td", { class: "num", text: fmt.format(tot) }),
-        el("td", { class: "num", text: fmt.format(+d.installment || 0) }), el("td", { class: "num", text: fmt.format(+d.remaining || 0) }),
+      return el("tr", null, el("td", { text: d.name || d.creditor || "بلا اسم" }), el("td", { text: d.creditor || "—" }), el("td", { class: "num", text: fmtAmt.format(tot) }),
+        el("td", { class: "num", text: fmtAmt.format(+d.installment || 0) }), el("td", { class: "num", text: fmtAmt.format(+d.remaining || 0) }),
         el("td", { class: "num", text: tot ? fmtPct.format(Math.max(tot - (+d.remaining || 0), 0) / tot) : "—" }),
         el("td", { text: ml ? monthName(addMonths(realMonth(), ml), true) : "—" }));
     });
@@ -1577,10 +1579,10 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         el("h3", { text: "الأرقام" }),
         el("div", { class: "ctable-wrap" }, el("table", { class: "ctable" },
           el("thead", null, el("tr", null, el("th", { text: "الشهر" }), series.map(function (sr) { return el("th", { text: sr.n }); }))),
-          el("tbody", null, keys.map(function (k, r) { return el("tr", null, el("td", { text: monthName(k, true) }), rows[r].map(function (v) { return el("td", { class: "num", text: fmt.format(v) }); })); })),
+          el("tbody", null, keys.map(function (k, r) { return el("tr", null, el("td", { text: monthName(k, true) }), rows[r].map(function (v) { return el("td", { class: "num", text: fmtAmt.format(v) }); })); })),
           el("tfoot", null,
-            el("tr", null, el("td", { text: "المجموع" }), series.map(function (sr, c) { return el("td", { class: "num", text: fmt.format(sum(rows, function (r) { return r[c]; })) }); })),
-            el("tr", null, el("td", { text: "المتوسط الشهري" }), series.map(function (sr, c) { return el("td", { class: "num", text: fmt.format(Math.round(sum(rows, function (r) { return r[c]; }) / keys.length)) }); }))))),
+            el("tr", null, el("td", { text: "المجموع" }), series.map(function (sr, c) { return el("td", { class: "num", text: fmtAmt.format(sum(rows, function (r) { return r[c]; })) }); })),
+            el("tr", null, el("td", { text: "المتوسط الشهري" }), series.map(function (sr, c) { return el("td", { class: "num", text: fmtAmt.format(sum(rows, function (r) { return r[c]; }) / keys.length) }); }))))),
         el("p", { class: "hint", text: "المبالغ بالريال. أقساط الديون محسوبة من قائمة الديون الحالية." })));
   };
   function drawChart(keys, series, rows) {
@@ -1604,7 +1606,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     keys.forEach(function (k, i) {
       if (i % every) return;
       var t = sv("text", { x: cx(i), y: H - 10, "text-anchor": "middle" });
-      t.textContent = monthName(k) + (years && (i === 0 || k.slice(5) === "01") ? " " + fmt.format(+k.slice(0, 4)).replace(/٬/g, "") : "");
+      t.textContent = monthName(k) + (years && (i === 0 || k.slice(5) === "01") ? " " + k.slice(0, 4) : "");
       svgEl.append(t);
     });
     var guide = sv("line", { x1: 0, x2: 0, y1: padT, y2: padT + plotH, class: "guide", visibility: "hidden" });
