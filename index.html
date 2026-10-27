@@ -849,7 +849,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         return a.dismiss ? el("div", { class: "alert-wrap" }, link, el("button", { class: "x alert-x", type: "button", "aria-label": "إخفاء التذكير", text: "×", onclick: function () { a.dismiss(); render(); } })) : link;
       })) : null,
       el("div", { class: "grid" },
-        tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", money(t.left)),
+        tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
       notice()];
   };
