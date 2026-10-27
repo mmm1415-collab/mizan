@@ -210,6 +210,13 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 .ctable th { color: var(--gold); font-weight: 500; }
 .ctable tfoot td { color: var(--ink); font-weight: 700; }
 .ctable td:first-child, .ctable th:first-child { text-align: right; }
+.debt-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: center; }
+.debt-row.grip-on { grid-template-columns: 22px minmax(0, 1fr); }
+.debt-link { display: grid; grid-template-columns: minmax(0, 1fr) auto 18px; gap: 10px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); color: var(--ink); text-decoration: none; }
+.debt-link:hover, .debt-link:focus-visible { border-color: var(--gold); }
+.debt-link svg { width: 18px; height: 18px; color: var(--gold); }
+.debt-party { min-width: 0; display: grid; } .debt-party b { overflow-wrap: anywhere; } .debt-party small, .debt-left small { color: var(--muted); font-size: .78rem; font-weight: 400; }
+.debt-left { display: grid; text-align: left; color: var(--gold); font-weight: 700; } .debt-left.pos { color: var(--ok); }
 .item-foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-size: .85rem; color: var(--muted); }
 
 .track { height: 8px; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
@@ -886,7 +893,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 33" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 34" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1007,15 +1014,45 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         tile("debts-sum", "ملخص الديون", "تحليل الديون ونسبة السداد", null))];
   };
 
+  /* debts lists show one line per debt (party and what is left); the line opens that debt's details */
+  function debtLine(href, party, sub, left, done) {
+    return el("div", { class: "debt-row" },
+      el("a", { class: "debt-link", href: "#" + href },
+        el("span", { class: "debt-party" }, el("b", { text: party }), sub ? el("small", { text: sub }) : null),
+        el("span", { class: "debt-left num" + (done ? " pos" : "") }, el("small", { text: done ? "سُدّد كاملًا" : "المتبقي" }), done ? null : money(left)),
+        svg(ICON_BACK.replace('M9 6l6 6-6 6', 'M15 6l-6 6 6 6'))));
+  }
+  function addDebt(text, list, make, prefix, focusPrefix) {
+    if (S.readOnly) return null;
+    return el("button", { class: "add", type: "button", text: "+ " + text, onclick: function () {
+      var it = make(); it.id = uid(); list.push(it); save("settings/debts"); go(prefix + it.id);
+      setTimeout(function () { var n = $(focusPrefix + it.id); if (n) n.focus(); }, 0);
+    } });
+  }
+  function registerDebtViews() {
+    (S.debts.list || []).forEach(function (d) { VIEWS["debt-" + d.id] = function () { return oweDetail(d); }; });
+    (S.debts.owed || []).forEach(function (x) { VIEWS["owed-" + x.id] = function () { return dueDetail(x); }; });
+  }
+
   VIEWS["debts-due"] = function () {
     if (!S.debts.owed) S.debts.owed = [];
     var list = S.debts.owed, path = "settings/debts";
     totalFns.owA = function () { return money(sum(list, function (x) { return x.amount; })); };
     totalFns.owL = function () { return money(sum(list, owedLeft)); };
     return [header("الديون لك", "debts", "الديون"),
-      el("p", { class: "hint", text: "المبالغ التي أقرضتها لغيرك. سجّل ما يُردّ إليك أولًا بأول ليظهر المتبقي." }),
+      el("p", { class: "hint", text: "المبالغ التي أقرضتها لغيرك. اضغط على أي دين لعرض تفاصيله وتعديلها." }),
       el("div", { class: "card" },
-        list.length ? sortable(list, path, list.map(function (x, i) {
+        list.length ? sortable(list, path, list.map(function (x) {
+          return debtLine("owed-" + x.id, x.name || "بلا اسم", x.due ? "موعد السداد: " + x.due : "", owedLeft(x), x.amount > 0 && !owedLeft(x));
+        })) : el("p", { class: "empty", text: "لا توجد ديون لك مسجلة." }),
+        addDebt("إضافة دين لك", list, function () { return { name: "", amount: 0, paid: 0, due: "", note: "" }; }, "owed-", "on-"),
+        totalRow("مجموع الديون لك", "owA"), totalRow("المتبقي تحصيله", "owL")),
+      el("p", { class: "hint", text: "الديون المرجوّ سدادها تدخل في حساب الزكاة؛ أضف المتبقي منها في قسم الزكاة." })];
+  };
+  function dueDetail(x) {
+    var list = S.debts.owed, path = "settings/debts";
+    return [header(x.name || "دين لك", "debts-due", "الديون لك"),
+      el("div", { class: "card" }, (function () {
           var foot = el("div", { class: "item-foot" });
           function upd() {
             var l = owedLeft(x);
@@ -1026,27 +1063,33 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           return el("div", { class: "item" },
             el("div", { class: "item-head" },
               el("label", { class: "why" }, "اسم المدين", textInput("on-" + x.id, x.name, function (v) { x.name = v; save(path); }, "اسم المدين", "من اقترض منك")),
-              delBtn(x.name, remover(list, i, path))),
+              delBtn(x.name, function () { list.splice(list.indexOf(x), 1); save(path); go("debts-due"); })),
             el("div", { class: "subform" },
               el("label", null, "مبلغ الدين", amountInput("oa-" + x.id, x.amount, function (v) { x.amount = v; upd(); save(path); })),
               el("label", null, "ما سُدّد منه", amountInput("op-" + x.id, x.paid, function (v) { x.paid = v; upd(); save(path); })),
               el("label", null, "موعد السداد", textInput("od-" + x.id, x.due, function (v) { x.due = v; save(path); }, "موعد السداد", "مثال: نهاية رمضان")),
               el("label", null, "ملاحظة", textInput("ox-" + x.id, x.note, function (v) { x.note = v; save(path); }, "ملاحظة", "اختياري"))),
             foot);
-        })) : el("p", { class: "empty", text: "لا توجد ديون لك مسجلة." }),
-        addBtn("إضافة دين لك", list, function () { return { name: "", amount: 0, paid: 0, due: "", note: "" }; }, path, "on-"),
-        totalRow("مجموع الديون لك", "owA"), totalRow("المتبقي تحصيله", "owL")),
-      el("p", { class: "hint", text: "الديون المرجوّ سدادها تدخل في حساب الزكاة؛ أضف المتبقي منها في قسم الزكاة." })];
-  };
+      })())];
+  }
 
   VIEWS["debts-owe"] = function () {
     var list = S.debts.list, path = "settings/debts";
     totalFns.dInst = function () { return money(sum(list, function (d) { return (+d.remaining || 0) > 0 ? d.installment : 0; })); };
     totalFns.dRem = function () { return money(sum(list, function (d) { return d.remaining; })); };
     return [header("الديون عليك", "debts", "الديون"),
-      el("p", { class: "hint", text: "القروض والأقساط والالتزامات الشهرية. يُحسب القسط ضمن مصروفات كل شهر، ويُخصم من المبلغ المتبقي تلقائيًا في بداية كل شهر." }),
+      el("p", { class: "hint", text: "القروض والأقساط والالتزامات الشهرية. اضغط على أي دين لعرض تفاصيله وتعديلها. يُخصم القسط من المتبقي تلقائيًا في بداية كل شهر." }),
       el("div", { class: "card" },
-        list.length ? sortable(list, path, list.map(function (d, i) {
+        list.length ? sortable(list, path, list.map(function (d) {
+          return debtLine("debt-" + d.id, d.creditor || d.name || "بلا جهة", d.creditor && d.name ? d.name : "", +d.remaining || 0, +d.total > 0 && !(+d.remaining > 0));
+        })) : el("p", { class: "empty", text: "لا توجد ديون أو التزامات مسجلة." }),
+        addDebt("إضافة التزام", list, function () { return { name: "", creditor: "", total: 0, installment: 0, remaining: 0, asOf: realMonth() }; }, "debt-", "dc-"),
+        totalRow("مجموع الأقساط الشهرية", "dInst"), totalRow("مجموع المتبقي", "dRem"))];
+  };
+  function oweDetail(d) {
+    var list = S.debts.list, path = "settings/debts";
+    return [header(d.creditor || d.name || "التزام", "debts-owe", "الديون عليك"),
+      el("div", { class: "card" }, (function () {
           var foot = el("div", { class: "item-foot" });
           function upd() {
             var ml = d.installment > 0 && d.remaining > 0 ? Math.ceil(d.remaining / d.installment) : 0;
@@ -1057,17 +1100,15 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           return el("div", { class: "item" },
             el("div", { class: "item-head" },
               textInput("dn-" + d.id, d.name, function (v) { d.name = v; save(path); }, "اسم الالتزام", "مثال: قرض شخصي، قسط السيارة"),
-              delBtn(d.name, remover(list, i, path))),
+              delBtn(d.name, function () { list.splice(list.indexOf(d), 1); save(path); go("debts-owe"); })),
             el("div", { class: "subform" },
               el("label", null, "الجهة", textInput("dc-" + d.id, d.creditor, function (v) { d.creditor = v; save(path); }, "الجهة", "البنك أو الشخص")),
               el("label", null, "المبلغ الإجمالي", amountInput("dt-" + d.id, d.total, function (v) { d.total = v; upd(); save(path); }, "المبلغ الإجمالي للدين")),
               el("label", null, "القسط الشهري", amountInput("di-" + d.id, d.installment, function (v) { d.installment = v; d.asOf = realMonth(); upd(); save(path); })),
               el("label", null, "المبلغ المتبقي", amountInput("dr-" + d.id, d.remaining, function (v) { d.remaining = v; d.asOf = realMonth(); upd(); save(path); }))),
             foot);
-        })) : el("p", { class: "empty", text: "لا توجد ديون أو التزامات مسجلة." }),
-        addBtn("إضافة التزام", list, function () { return { name: "", creditor: "", total: 0, installment: 0, remaining: 0, asOf: realMonth() }; }, path, "dn-"),
-        totalRow("مجموع الأقساط الشهرية", "dInst"), totalRow("مجموع المتبقي", "dRem"))];
-  };
+      })())];
+  }
 
   VIEWS.savings = function () {
     var t = totals();
@@ -1765,8 +1806,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   }
   function render() {
     var v = location.hash.slice(1);
-    registerCustomViews();
-    if (!VIEWS[v]) v = "home";
+    registerCustomViews(); registerDebtViews();
+    if (!VIEWS[v]) v = /^debt-/.test(v) ? "debts-owe" : /^owed-/.test(v) ? "debts-due" : "home";
     if (v !== "home" && (!secLoaded || !isUnlocked())) v = "home";
     var changed = v !== current;
     if (changed) secEditing = "";
