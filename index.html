@@ -614,6 +614,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     return el("input", { class: "amt", id: id, inputmode: "decimal", autocomplete: "off", placeholder: "0.00", "aria-label": label || "المبلغ",
       value: value ? fmtAmt.format(value) : "", disabled: S.readOnly ? "" : null,
       oninput: function (e) { onval(parseAmount(e.target.value)); refreshTotals(); },
+      onfocus: function (e) { if (e.target.value.trim()) e.target.value = String(parseAmount(e.target.value)); },
       onblur: function (e) { if (e.target.value.trim()) e.target.value = fmtAmt.format(parseAmount(e.target.value)); } });
   }
   function textInput(id, value, onval, label, ph) {
