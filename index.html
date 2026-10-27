@@ -114,7 +114,7 @@ a.tile:hover { border-color: var(--gold); }
 .card h3 { font-size: 1rem; font-weight: 500; color: var(--gold); }
 .hint { margin: 0; color: var(--muted); font-size: .9rem; text-align: center; }
 .rows { display: grid; gap: 8px; }
-.row { display: grid; grid-template-columns: minmax(0, 1fr) 120px 32px; gap: 8px; align-items: center; }
+.row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 110px 52px; gap: 8px; align-items: center; }
 .row .lbl { min-width: 0; overflow-wrap: anywhere; }
 .row .sub { display: block; color: var(--muted); font-size: .8rem; }
 input, select { width: 100%; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; }
@@ -128,9 +128,13 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 .subform label { display: grid; gap: 2px; font-size: .8rem; color: var(--muted); min-width: 0; }
 .item { border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 8px; background: var(--panel-2); }
 .item input, .item select { background: var(--panel); }
-.item-head { display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 8px; align-items: center; }
-.row.grip-on { grid-template-columns: 28px minmax(0, 1fr) 110px 32px; }
-.item-head.grip-on { grid-template-columns: 28px minmax(0, 1fr) 32px; }
+.item-head { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 52px; gap: 8px; align-items: center; }
+.row.grip-on { grid-template-columns: 28px minmax(0, 1fr) 96px 52px; }
+.item-head.grip-on { grid-template-columns: 28px minmax(0, 1fr) 52px; }
+.del { border: 1px solid var(--bad); background: transparent; color: var(--bad); border-radius: 6px; height: 34px; padding: 0 6px; cursor: pointer; font: inherit; font-size: .85rem; }
+.del-confirm { position: absolute; inset: 0; z-index: 4; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; background: var(--panel); border: 1px solid var(--bad); border-radius: 8px; padding: 0 8px; }
+.del-confirm .yes { border: 0; background: var(--bad); color: #fff; border-radius: 6px; height: 34px; font: inherit; font-weight: 700; cursor: pointer; }
+.del-confirm .no { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 6px; height: 34px; padding: 0 12px; font: inherit; cursor: pointer; }
 .grip { width: 28px; height: 40px; border: 0; background: none; color: var(--gold); cursor: grab; touch-action: none; display: grid; place-items: center; padding: 0; border-radius: 6px; -webkit-user-select: none; user-select: none; }
 .grip svg { width: 18px; height: 18px; }
 .rows > .dragging { position: relative; z-index: 5; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); outline: 1px solid var(--gold); border-radius: 8px; background: var(--panel-2); }
@@ -588,7 +592,21 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     for (var i = 1; i <= count; i++) { var o = el("option", { value: String(i), text: name(i) }); if (String(value) === String(i)) o.selected = true; opts.push(o); }
     return el("select", { id: id, "aria-label": label, disabled: S.readOnly ? "" : null, onchange: function (e) { onval(e.target.value); } }, opts);
   }
-  function delBtn(label, fn) { return S.readOnly ? el("span") : el("button", { class: "x", type: "button", "aria-label": "حذف " + (label || "البند"), text: "×", onclick: fn }); }
+  /* delete asks once more: the row is covered by «تأكيد الحذف» and «إلغاء» */
+  function delBtn(label, fn) {
+    if (S.readOnly) return el("span");
+    var b = el("button", { class: "del", type: "button", "aria-label": "حذف " + (label || "البند"), text: "حذف", onclick: function () {
+      var host = b.parentNode, box;
+      function close() { if (box) box.remove(); clearTimeout(timer); }
+      box = el("div", { class: "del-confirm", role: "group", "aria-label": "تأكيد حذف " + (label || "البند") },
+        el("button", { class: "yes", type: "button", text: "تأكيد الحذف", onclick: function () { close(); fn(); } }),
+        el("button", { class: "no", type: "button", text: "إلغاء", onclick: close }));
+      host.append(box);
+      box.firstChild.focus();
+      var timer = setTimeout(close, 6000);
+    } });
+    return b;
+  }
   function addBtn(text, list, make, path, focusPrefix) {
     if (S.readOnly) return null;
     return el("button", { class: "add", type: "button", text: "+ " + text, onclick: function () {

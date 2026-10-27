@@ -1,5 +1,5 @@
 // ميزان: offline cache. Bump VERSION whenever any app file changes.
-const VERSION = "mizan-v13";
+const VERSION = "mizan-v14";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icon.svg", "icon-180.png", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
