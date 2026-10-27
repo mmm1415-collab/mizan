@@ -627,7 +627,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     return el("input", { class: "amt", id: id, inputmode: "decimal", autocomplete: "off", placeholder: "0.00", "aria-label": label || "المبلغ",
       value: value ? fmtAmt.format(value) : "", disabled: S.readOnly ? "" : null,
       oninput: function (e) { onval(parseAmount(e.target.value)); refreshTotals(); },
-      onfocus: function (e) { if (e.target.value.trim()) e.target.value = String(parseAmount(e.target.value)); },
+      onfocus: function (e) { var f = e.target; if (f.value.trim()) { f.value = String(parseAmount(f.value)); setTimeout(function () { try { f.setSelectionRange(0, f.value.length); } catch (x) {} }, 0); } },
       onblur: function (e) { if (e.target.value.trim()) e.target.value = fmtAmt.format(parseAmount(e.target.value)); } });
   }
   function textInput(id, value, onval, label, ph) {
@@ -867,7 +867,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 31" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 32" })];
   };
   VIEWS.budget = function () {
     var t = totals();
