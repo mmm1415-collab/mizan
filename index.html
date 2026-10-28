@@ -244,6 +244,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 .note-line:hover, .note-line:focus-visible { border-color: var(--gold); }
 .note-line.done { opacity: .65; } .note-line.done b { text-decoration: line-through; }
 .nl-title { min-width: 0; display: flex; align-items: center; gap: 6px; } .nl-title b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.ch-amt { color: var(--gold); white-space: nowrap; font-size: .9rem; }
 .nl-done { font-style: normal; color: var(--ok); } .nl-date { color: var(--muted); font-size: .8rem; white-space: nowrap; } .nl-stars { color: var(--gold); font-size: .75rem; white-space: nowrap; }
 .item-foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-size: .85rem; color: var(--muted); }
 
@@ -991,7 +992,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 48" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 49" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1017,25 +1018,45 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         tile("charity-out", "المصاريف", "ما صُرف من الصندوق ولمن", money(sum(c.spend, amt))),
         tile("charity-sum", "الملخص", "الرصيد والتحليل", money(charityBalance())))];
   };
+  /* each fund list is short lines (what, date, amount); a line opens that entry's details */
+  var CH_KINDS = { income: { pre: "chi-", list: "charity-in", title: "دخل الصندوق", one: "دخل", namePh: "المتبرع أو مصدر المبلغ", nameLabel: "المتبرع أو المصدر" },
+    spend: { pre: "cho-", list: "charity-out", title: "مصاريف الصندوق", one: "مصروف", namePh: "المستفيد أو وجه الصرف", nameLabel: "المستفيد أو وجه الصرف" } };
   function charityList(key, title, hint, empty, addText, namePh, totalLabel) {
     return function () {
       if (!S.charity[key]) S.charity[key] = [];
-      var list = S.charity[key], path = "settings/charity";
+      var list = S.charity[key], path = "settings/charity", K = CH_KINDS[key];
       totalFns["ch" + key] = function () { return money(sum(list, amt)); };
       return [header(title, "charity", "الصندوق الخيري"),
-        el("p", { class: "hint", text: hint }),
+        el("p", { class: "hint", text: hint + " اضغط على أي عنصر لعرض تفاصيله وتعديلها." }),
         el("div", { class: "card" },
-          list.length ? sortable(list, path, list.map(function (it, i) {
-            var name = textInput("chn-" + it.id, it.name, function (v) { it.name = v; save(path); }, "البيان", namePh);
-            name.classList.add("src-name");
-            return el("div", { class: "row src-row" }, name,
-              el("input", { type: "date", class: "src-sel", id: "chd-" + it.id, value: it.date || "", "aria-label": "التاريخ", disabled: S.readOnly ? "" : null, onchange: function (e) { it.date = e.target.value; save(path); } }),
-              amountInput("cha-" + it.id, it.amount, function (v) { it.amount = v; save(path); }, "المبلغ"),
-              delBtn(it.name, remover(list, i, path)));
+          list.length ? sortable(list, path, list.map(function (it) {
+            return el("div", { class: "debt-row" },
+              el("a", { class: "note-line", href: "#" + K.pre + it.id },
+                el("span", { class: "nl-title" }, el("b", { text: it.name || "بلا بيان" })),
+                el("span", { class: "nl-date num", text: noteDay(it.date) }),
+                el("b", { class: "num ch-amt", text: money(it.amount) })));
           })) : el("p", { class: "empty", text: empty }),
-          addBtn(addText, list, function () { return { name: "", amount: 0, date: todayKey() }; }, path, "chn-"),
+          S.readOnly ? null : el("button", { class: "add", type: "button", text: "+ " + addText, onclick: function () {
+            var it = { id: uid(), name: "", amount: 0, date: todayKey(), note: "" }; list.push(it); save(path); go(K.pre + it.id);
+            setTimeout(function () { var f = $("chn-" + it.id); if (f) f.focus(); }, 0);
+          } }),
           totalRow(totalLabel, "ch" + key))];
     };
+  }
+  function charityDetail(key, it) {
+    var list = S.charity[key], path = "settings/charity", K = CH_KINDS[key];
+    return [header(it.name || K.one + " جديد", K.list, K.title),
+      el("div", { class: "card" }, el("div", { class: "item" },
+        el("div", { class: "item-head" },
+          el("label", { class: "why" }, K.nameLabel, textInput("chn-" + it.id, it.name, function (v) { it.name = v; save(path); }, K.nameLabel, K.namePh)),
+          delBtn(it.name, function () { list.splice(list.indexOf(it), 1); save(path); go(K.list); })),
+        el("div", { class: "subform" },
+          el("label", null, "التاريخ", el("input", { type: "date", id: "chd-" + it.id, value: it.date || "", disabled: S.readOnly ? "" : null, onchange: function (e) { it.date = e.target.value; save(path); } })),
+          el("label", null, "المبلغ", amountInput("cha-" + it.id, it.amount, function (v) { it.amount = v; save(path); }, "المبلغ"))),
+        el("label", { class: "why" }, "ملاحظة", textInput("chx-" + it.id, it.note, function (v) { it.note = v; save(path); }, "ملاحظة", "اختياري")))) ];
+  }
+  function registerCharityViews() {
+    ["income", "spend"].forEach(function (key) { (S.charity[key] || []).forEach(function (it) { VIEWS[CH_KINDS[key].pre + it.id] = function () { return charityDetail(key, it); }; }); });
   }
   VIEWS["charity-in"] = charityList("income", "دخل الصندوق", "سجّل كل مبلغ يصل إلى الصندوق: اسم المتبرع أو الجهة، والتاريخ، والمبلغ.", "لم يُسجَّل دخل للصندوق بعد.", "إضافة دخل", "المتبرع أو مصدر المبلغ", "مجموع الدخل");
   VIEWS["charity-out"] = charityList("spend", "مصاريف الصندوق", "سجّل كل مبلغ يُصرف من الصندوق: المستفيد أو وجه الصرف، والتاريخ، والمبلغ.", "لم تُسجَّل مصاريف للصندوق بعد.", "إضافة مصروف", "المستفيد أو وجه الصرف", "مجموع المصاريف");
@@ -2089,8 +2110,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   }
   function render() {
     var v = location.hash.slice(1);
-    registerCustomViews(); registerDebtViews(); registerNoteViews();
-    if (!VIEWS[v]) v = /^debt-/.test(v) ? "debts-owe" : /^owed-/.test(v) ? "debts-due" : /^note-/.test(v) ? "notes" : "home";
+    registerCustomViews(); registerDebtViews(); registerNoteViews(); registerCharityViews();
+    if (!VIEWS[v]) v = /^debt-/.test(v) ? "debts-owe" : /^owed-/.test(v) ? "debts-due" : /^note-/.test(v) ? "notes" : /^chi-/.test(v) ? "charity-in" : /^cho-/.test(v) ? "charity-out" : "home";
     if (v !== "home" && (!secLoaded || !isUnlocked())) v = "home";
     var changed = v !== current;
     if (changed) secEditing = "";
