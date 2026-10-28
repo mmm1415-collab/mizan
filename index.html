@@ -46,7 +46,7 @@ button, input, select { font: inherit; color: inherit; }
 
 /* Home */
 .wrap > main { flex: 1; display: grid; }
-.home { display: grid; grid-template-rows: 1fr auto 1fr auto; justify-items: center; text-align: center; }
+.home { display: grid; grid-template-rows: 1fr auto auto 1fr; justify-items: center; text-align: center; }
 .home .title { align-self: end; padding-bottom: 48px; }
 .home .enter { grid-row: 2; }
 .title { display: grid; justify-items: center; gap: 14px; }
@@ -63,10 +63,9 @@ button, input, select { font: inherit; color: inherit; }
 .home .enter { grid-row: 2; }
 .pin-box { display: grid; justify-items: center; gap: 10px; }
 .home > .gate > .pin-form > .pin-box, .pin-below { grid-row: 3; align-self: start; margin-top: 26px; display: grid; justify-items: center; gap: 12px; }
-.profile-bar { grid-row: 4; justify-self: stretch; margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #2f8a62; background: #1f6b4a; color: #fff; border-radius: 10px; padding: 14px 18px; cursor: pointer; font: inherit; text-align: start; }
-.profile-bar b { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; } .profile-bar small { display: block; opacity: .85; font-size: .82rem; }
-.profile-bar svg { width: 22px; height: 22px; flex: none; } .profile-bar:hover { background: #237a55; }
-.profile-bar.back-pub { background: transparent; border-color: var(--gold); color: var(--gold); }
+.profile-bar { grid-row: 4; align-self: start; justify-self: center; margin-top: 3.2em; display: inline-flex; align-items: center; gap: 12px; border: 1px solid #2f8a62; background: #1f6b4a; color: #fff; cursor: pointer; font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; padding: 12px 32px; border-radius: 6px; box-shadow: 0 0 0 6px rgba(47,138,98,.22); }
+.profile-bar svg { width: 24px; height: 24px; flex: none; } .profile-bar:hover { background: #237a55; }
+.profile-bar.back-pub { background: transparent; border-color: var(--gold); color: var(--gold); box-shadow: 0 0 0 6px var(--gold-soft); }
 .private-tag { margin: 4px 0 0; display: inline-block; border: 1px solid #2f8a62; color: var(--ok); border-radius: 999px; padding: 2px 12px; font-size: .85rem; }
 body.private .wrap { box-shadow: inset 0 3px 0 #2f8a62; } body.private .home .title { padding-bottom: 20px; }
 .reg-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--gold); background: transparent; color: var(--gold); border-radius: 6px; padding: 8px 18px; cursor: pointer; font-family: var(--font-display); }
@@ -418,7 +417,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     bar.hidden = !!S.db;
     if (PROFILE) { $("appTitle").textContent = "ميزانيتي"; $("privateTag").hidden = false; document.body.classList.add("private"); document.title = "ميزانيتي"; }
     bar.classList.toggle("back-pub", !!PROFILE);
-    bar.replaceChildren(el("span", null, el("b", { text: PROFILE ? "الميزانية" : "ميزانيتي" }), el("small", { text: PROFILE ? "العودة إلى الميزانية العامة" : "ميزانيتك الخاصة، ببيانات منفصلة" })), svg(ICON_BACK.replace("M9 6l6 6-6 6", "M15 6l-6 6 6 6")));
+    bar.replaceChildren(el("span", { text: PROFILE ? "الميزانية" : "ميزانيتي" }), svg(ICON_BACK.replace("M9 6l6 6-6 6", "M15 6l-6 6 6 6")));
     bar.onclick = switchProfile;
   }
   function lsGet(path) { try { var v = localStorage.getItem(LS + path); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
@@ -1012,7 +1011,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 50" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 51" })];
   };
   VIEWS.budget = function () {
     var t = totals();
