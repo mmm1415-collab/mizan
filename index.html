@@ -1021,7 +1021,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 53" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 54" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1030,7 +1030,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         tile("income", "الدخل والموارد", "الراتب وأي دخل أو مورد إضافي", money(t.income)),
         tile("expenses", "المصروفات", ["actual", "unscheduled"].concat(customSecs("expenses").map(function (c) { return c.id; })).filter(secOn).map(secName).join(" · ") || "—", money(t.actFixed + t.actVar + t.unsched + t.custom)),
         tile("debts", "الديون والالتزامات", "المتبقي من الديون عليك", money(sum(S.debts.list, function (d) { return d.remaining; }))),
-        tile("savings", "الادخار", "الادخار الشهري والسحوبات", money(t.saving)),
+        tile("savings", "الادخار", "بيانات الادخار والسحوبات", money(t.saving)),
         tile("invest", "الاستثمار", "المحفظة والربح والخسارة", money(sum(S.investments.list, function (x) { return x.current; }))),
         tile("charity", "الصندوق الخيري", "الدخل · المصاريف · الملخص", money(charityBalance()))),
       notice()];
@@ -1361,20 +1361,50 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var t = totals();
     return [header("الادخار", "budget", "الميزانية"), monthBar(),
       el("div", { class: "grid" },
-        tile("save-monthly", "الادخار الشهري", "الرقم والاسم والمبلغ الشهري", money(t.saving)),
+        tile("save-monthly", "بيانات الادخار", "إجمالي الادخار والقسط والرصيد الحالي", money(t.saving)),
         tile("save-withdraw", "السحوبات من الادخار", "ما سحبته من مدخراتك هذا الشهر", money(withdrawTotal(monthDoc()))),
         tile("save-total", "إجمالي الادخار", "المدخر والمسحوب والرصيد", null),
         tile("save-sum", "ملخص الادخار", "نسبة الادخار والمتوسط والتحليل", null)),
-      el("p", { class: "hint", text: "ادخار الشهر يُحسب من قائمة «الادخار الشهري»." })];
+      el("p", { class: "hint", text: "ادخار الشهر يُحسب من أقساط «بيانات الادخار»." })];
   };
 
   VIEWS["save-monthly"] = function () {
+    var head = header("بيانات الادخار", "savings", "الادخار"), keys = knownMonths();
+    var missing = keys.filter(function (k) { return !loadedMonths[k] && !S.months[k]; });
+    if (missing.length) {
+      Promise.all(missing.map(loadMonth)).then(function () { if (current === "save-monthly") render(); });
+      return [head, el("div", { class: "card" }, el("p", { class: "empty", text: "جارٍ حساب الأرصدة…" }))];
+    }
     var m = monthDoc(), mpath = "months/" + S.month, path = "settings/savings", list = saveItems();
+    /* every month's instalments into an item, less what was withdrawn from it */
+    function stored() { return Object.keys(S.months).filter(function (k) { return /^\d{4}-\d{2}$/.test(k); }).map(function (k) { return S.months[k]; }); }
+    function itemIn(id) { return sum(stored(), function (x) { return savedOf(x, id); }); }
+    function itemOut(id) { return sum(stored(), function (x) { return sum((x.withdrawals || []).filter(function (w) { return w.from === id; }), amt); }); }
+    function allIn() { return sum(list, function (it) { return itemIn(it.id); }); }
+    function allOut() { return sum(list, function (it) { return itemOut(it.id); }); }
+    list.forEach(function (it) {
+      totalFns["sdn-" + it.id] = function () { return it.name || "بلا اسم"; };
+      totalFns["sdi-" + it.id] = function () { return fmtAmt.format(itemIn(it.id)); };
+      totalFns["sdq-" + it.id] = function () { return fmtAmt.format(savedOf(m, it.id)); };
+      totalFns["sdb-" + it.id] = function () { return fmtAmt.format(itemIn(it.id) - itemOut(it.id)); };
+    });
+    totalFns.sdi = function () { return fmtAmt.format(allIn()); };
+    totalFns.sdq = function () { return fmtAmt.format(sum(list, function (it) { return savedOf(m, it.id); })); };
+    totalFns.sdb = function () { return fmtAmt.format(allIn() - allOut()); };
+    function cell(key) { return el("td", { class: "num", "data-total": key }); }
+    var table = el("div", { class: "card" },
+      el("h3", { text: "بيانات الادخار" }),
+      list.length ? el("div", { class: "ctable-wrap" }, el("table", { class: "ctable" },
+        el("thead", null, el("tr", null, el("th", { text: "الاسم" }), el("th", { text: "إجمالي الادخار" }), el("th", { text: "القسط" }), el("th", { text: "الرصيد الحالي" }))),
+        el("tbody", null, list.map(function (it) { return el("tr", null, el("td", { "data-total": "sdn-" + it.id }), cell("sdi-" + it.id), cell("sdq-" + it.id), cell("sdb-" + it.id)); })),
+        el("tfoot", null, el("tr", null, el("td", { text: "المجموع" }), cell("sdi"), cell("sdq"), cell("sdb"))))) : null,
+      el("p", { class: "hint", text: "إجمالي الادخار: كل ما دخل على البند من أقساط في جميع الأشهر. القسط: مبلغ هذا الشهر. الرصيد الحالي: الإجمالي بعد خصم السحوبات." }));
     totalFns.sv = function () { var t = totals(); return t.income ? fmtPct.format(t.saving / t.income) + " من الدخل" : "أدخل دخل الشهر لحساب النسبة"; };
     totalFns.svMonth = function () { return money(totals().saving); };
-    return [header("الادخار الشهري", "savings", "الادخار"), monthBar(),
+    return [head, monthBar(), table,
       el("div", { class: "card" },
-        el("div", { class: "save-head" + (list.length > 1 && !S.readOnly ? " grip-on" : "") }, list.length > 1 && !S.readOnly ? el("span") : null, el("span", { text: "الرقم" }), el("span", { text: "الاسم" }), el("span", { text: "المبلغ" })),
+        el("h3", { text: "أقساط هذا الشهر" }),
+        el("div", { class: "save-head" + (list.length > 1 && !S.readOnly ? " grip-on" : "") }, list.length > 1 && !S.readOnly ? el("span") : null, el("span", { text: "الرقم" }), el("span", { text: "الاسم" }), el("span", { text: "القسط" })),
         list.length ? sortable(list, path, list.map(function (it, i) {
           return el("div", { class: "row save-row" },
             el("span", { class: "save-no num", text: fmt.format(i + 1) }),
