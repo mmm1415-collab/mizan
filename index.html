@@ -409,9 +409,10 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   function monthDoc(key) { key = key || S.month; if (!S.months[key]) S.months[key] = emptyMonth(); return S.months[key]; }
   function dataFor(path) { return path.indexOf("months/") === 0 ? monthDoc(path.slice(7)) : S[path.slice(9)]; }
   /* two budgets in one app: «الميزانية» (general) and «ميزانيتي» (private), each with its own data on this device */
-  var PROFILE = (function () { try { return localStorage.getItem("mizan-profile") === "private" ? "private" : ""; } catch (e) { return ""; } })();
+  /* the private budget lasts for this visit only; every fresh launch opens the main budget */
+  var PROFILE = (function () { try { localStorage.removeItem("mizan-profile"); return sessionStorage.getItem("mizan-profile") === "private" ? "private" : ""; } catch (e) { return ""; } })();
   var LS = PROFILE ? "mizaniyati-private:" : "mizaniyati:";
-  function switchProfile() { try { localStorage.setItem("mizan-profile", PROFILE ? "" : "private"); sessionStorage.setItem("mizan-direct", "1"); } catch (e) {} location.hash = ""; location.reload(); }
+  function switchProfile() { try { sessionStorage.setItem("mizan-profile", PROFILE ? "" : "private"); sessionStorage.setItem("mizan-direct", "1"); } catch (e) {} location.hash = ""; location.reload(); }
   /* after switching budgets, open the sections straight away unless that budget has a PIN */
   function directEntry(state) {
     var d = ""; try { d = sessionStorage.getItem("mizan-direct") || ""; } catch (e) {}
@@ -1020,7 +1021,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 52" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 53" })];
   };
   VIEWS.budget = function () {
     var t = totals();
