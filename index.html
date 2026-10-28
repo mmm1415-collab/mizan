@@ -240,6 +240,11 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 .src-row.grip-on { grid-template-columns: 22px minmax(0, 1fr) 132px 52px; grid-template-areas: "grip name name name" "grip src amt del"; }
 .src-row > .grip { grid-area: grip; } .src-row > .src-name { grid-area: name; } .src-row > .src-sel { grid-area: src; font-size: .85rem; padding-inline: 6px; } .src-row > .amt-pair { grid-area: amt; } .src-row > .del { grid-area: del; }
 .src-row + .src-row { border-top: 1px solid var(--line); padding-top: 8px; }
+.note-line { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); color: var(--ink); text-decoration: none; }
+.note-line:hover, .note-line:focus-visible { border-color: var(--gold); }
+.note-line.done { opacity: .65; } .note-line.done b { text-decoration: line-through; }
+.nl-title { min-width: 0; display: flex; align-items: center; gap: 6px; } .nl-title b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.nl-done { font-style: normal; color: var(--ok); } .nl-date { color: var(--muted); font-size: .8rem; white-space: nowrap; } .nl-stars { color: var(--gold); font-size: .75rem; white-space: nowrap; }
 .item-foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-size: .85rem; color: var(--muted); }
 
 .track { height: 8px; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
@@ -981,7 +986,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 45" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 46" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1726,13 +1731,16 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     return { go: "notes", text: "🔔 تنبيه: «" + (n.title || "ملحوظة بلا موضوع") + "»" + (due.length > 1 ? " و" + (due.length === 2 ? "تنبيه آخر" : fmt.format(due.length - 1) + " تنبيهات أخرى") : ""),
       dismiss: function () { due.forEach(function (x) { x.remindClosed = x.remind; }); save("settings/notes"); } };
   });
-  var noteFilter = "all";
-  VIEWS.notes = function () {
-    if (!S.notes.list) S.notes.list = [];
+  var fmtNoteDay = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", { day: "numeric", month: "numeric", year: "numeric" });
+  /* notes made before the date field get the day their id was created (ids start with the time) */
+  function noteDate(n) {
+    if (n.date) return n.date;
+    var t = parseInt(String(n.id || "").slice(0, -4), 36), d = new Date(t);
+    return t > 1.6e12 && t < 4e12 ? d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) : "";
+  }
+  function noteDay(key) { if (!key) return "بلا تاريخ"; var p = key.split("-").map(Number); return fmtNoteDay.format(new Date(p[0], p[1] - 1, p[2])); }
+  function noteCard(n) {
     var list = S.notes.list, path = "settings/notes";
-    var shown = list.filter(function (n) { return noteFilter === "all" || (noteFilter === "done" ? n.done : !n.done); });
-    function card(n) {
-      var i = list.indexOf(n);
       var stars = el("div", { class: "stars", role: "group", "aria-label": "الأهمية" });
       for (var k = 1; k <= 5; k++) (function (k) {
         stars.append(el("button", { type: "button", class: k <= (+n.stars || 0) ? "on" : "", text: "★", "aria-label": "الأهمية " + fmt.format(k) + " من 5", "aria-pressed": k === +n.stars ? "true" : "false",
@@ -1741,7 +1749,9 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       return el("div", { class: "item note" + (n.done ? " done" : "") },
         el("div", { class: "item-head" },
           el("label", { class: "why" }, "الموضوع", textInput("nt-" + n.id, n.title, function (v) { n.title = v; save(path); }, "موضوع الملحوظة", "مثال: مراجعة اشتراك الجوال")),
-          delBtn(n.title, remover(list, i, path))),
+          delBtn(n.title, function () { list.splice(list.indexOf(n), 1); save(path); go("notes"); })),
+        el("label", { class: "why" }, "التاريخ",
+          el("input", { type: "date", id: "nd-" + n.id, value: noteDate(n), disabled: S.readOnly ? "" : null, onchange: function (e) { n.date = e.target.value; save(path); } })),
         el("label", { class: "why" }, "النص",
           el("textarea", { id: "nx-" + n.id, text: n.text || "", placeholder: "اكتب الملحوظة أو التنبيه أو المقترح…", "aria-label": "نص الملحوظة", disabled: S.readOnly ? "" : null,
             oninput: function (e) { n.text = e.target.value; save(path); } })),
@@ -1756,6 +1766,23 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           n.remind ? el("button", { type: "button", class: "add", text: "إلغاء التنبيه", onclick: function () { n.remind = ""; save(path); render(); } }) : null,
           el("small", { class: "remind-note", text: !n.remind ? "اختر يومًا ليظهر لك تنبيه بهذه الملحوظة في صفحة الأقسام." : n.done ? "الملحوظة منجزة، فلن يظهر التنبيه." : n.remind <= todayKey() ? "حلّ موعد التنبيه." : "سيظهر التنبيه في " + fmtLongDay.format(new Date(n.remind + "T12:00:00")) + "." })));
     }
+  function registerNoteViews() {
+    (S.notes.list || []).forEach(function (n) { VIEWS["note-" + n.id] = function () { return [header(n.title || "ملحوظة", "notes", "الملحوظات"), el("div", { class: "card" }, noteCard(n))]; }; });
+  }
+  /* the notes page is a short list: title, date and stars on one line; the line opens the note */
+  function noteLine(n) {
+    var st = +n.stars || 0;
+    return el("div", { class: "debt-row" },
+      el("a", { class: "note-line" + (n.done ? " done" : ""), href: "#note-" + n.id },
+        el("span", { class: "nl-title" }, n.done ? el("i", { class: "nl-done", text: "✓" }) : null, el("b", { text: n.title || "ملحوظة بلا موضوع" }), n.remind && !n.done ? el("small", { text: "🔔" }) : null),
+        el("span", { class: "nl-date num", text: noteDay(noteDate(n)) }),
+        el("span", { class: "nl-stars", "aria-label": "الأهمية " + st + " من 5", text: "★★★★★".slice(0, st) + "☆☆☆☆☆".slice(0, 5 - st) })));
+  }
+  var noteFilter = "all";
+  VIEWS.notes = function () {
+    if (!S.notes.list) S.notes.list = [];
+    var list = S.notes.list, path = "settings/notes";
+    var shown = list.filter(function (n) { return noteFilter === "all" || (noteFilter === "done" ? n.done : !n.done); });
     var counts = { all: list.length, open: list.filter(function (n) { return !n.done; }).length, done: list.filter(function (n) { return n.done; }).length };
     return [header("الملحوظات", "services", "الخدمات"),
       el("p", { class: "hint", text: "اكتب ما تريد من ملحوظات وتنبيهات ومقترحات وتوصيات، وحدد أهميتها بالنجوم، وعلّمها «منجز» عند تنفيذها." }),
@@ -1763,9 +1790,13 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         return el("button", { type: "button", "aria-pressed": noteFilter === f[0] ? "true" : "false", text: f[1] + " (" + fmt.format(counts[f[0]]) + ")", onclick: function () { noteFilter = f[0]; render(); } });
       })),
       el("div", { class: "card" },
-        shown.length ? (noteFilter === "all" ? sortable(list, path, list.map(card)) : el("div", { class: "rows" }, shown.map(card)))
+        shown.length ? (noteFilter === "all" ? sortable(list, path, list.map(noteLine)) : el("div", { class: "rows" }, shown.map(noteLine)))
           : el("p", { class: "empty", text: noteFilter === "done" ? "لا توجد ملحوظات منجزة." : noteFilter === "open" ? "كل الملحوظات منجزة." : "لا توجد ملحوظات بعد." }),
-        (function () { var b = addBtn("إضافة ملحوظة", list, function () { noteFilter = "all"; return { title: "", text: "", type: NOTE_TYPES[0], stars: 0, done: false }; }, path, "nt-"); if (b) b.classList.add("add-wide"); return b; })())];
+        S.readOnly ? null : el("button", { class: "add add-wide", type: "button", text: "+ إضافة ملحوظة", onclick: function () {
+          var n = { id: uid(), title: "", text: "", type: NOTE_TYPES[0], stars: 0, done: false, date: todayKey() };
+          noteFilter = "all"; list.push(n); save(path); go("note-" + n.id);
+          setTimeout(function () { var f = $("nt-" + n.id); if (f) f.focus(); }, 0);
+        } }))];
   };
 
   /* ---------- budget chart over a chosen period ---------- */
@@ -1995,8 +2026,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   }
   function render() {
     var v = location.hash.slice(1);
-    registerCustomViews(); registerDebtViews();
-    if (!VIEWS[v]) v = /^debt-/.test(v) ? "debts-owe" : /^owed-/.test(v) ? "debts-due" : "home";
+    registerCustomViews(); registerDebtViews(); registerNoteViews();
+    if (!VIEWS[v]) v = /^debt-/.test(v) ? "debts-owe" : /^owed-/.test(v) ? "debts-due" : /^note-/.test(v) ? "notes" : "home";
     if (v !== "home" && !secLoaded) v = "home";
     var changed = v !== current;
     if (changed) secEditing = "";
