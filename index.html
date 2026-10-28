@@ -411,13 +411,21 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   /* two budgets in one app: «الميزانية» (general) and «ميزانيتي» (private), each with its own data on this device */
   var PROFILE = (function () { try { return localStorage.getItem("mizan-profile") === "private" ? "private" : ""; } catch (e) { return ""; } })();
   var LS = PROFILE ? "mizaniyati-private:" : "mizaniyati:";
-  function switchProfile() { try { localStorage.setItem("mizan-profile", PROFILE ? "" : "private"); } catch (e) {} location.hash = ""; location.reload(); }
+  function switchProfile() { try { localStorage.setItem("mizan-profile", PROFILE ? "" : "private"); sessionStorage.setItem("mizan-direct", "1"); } catch (e) {} location.hash = ""; location.reload(); }
+  /* after switching budgets, open the sections straight away unless that budget has a PIN */
+  function directEntry(state) {
+    var d = ""; try { d = sessionStorage.getItem("mizan-direct") || ""; } catch (e) {}
+    if (!d || state === "loading") return false;
+    try { sessionStorage.removeItem("mizan-direct"); } catch (e) {}
+    if (state === "locked") return false;
+    go("sections"); return true;
+  }
   function paintProfile() {
     var bar = $("profileBar"); if (!bar) return;
     bar.hidden = !!S.db;
     if (PROFILE) { $("appTitle").textContent = "ميزانيتي"; $("privateTag").hidden = false; document.body.classList.add("private"); document.title = "ميزانيتي"; }
     bar.classList.toggle("back-pub", !!PROFILE);
-    bar.replaceChildren(el("span", { text: PROFILE ? "الميزانية" : "ميزانيتي" }), svg(ICON_BACK.replace("M9 6l6 6-6 6", "M15 6l-6 6 6 6")));
+    bar.replaceChildren(el("span", { text: PROFILE ? "الميزانية" : "ميزانيتي" }));
     bar.onclick = switchProfile;
   }
   function lsGet(path) { try { var v = localStorage.getItem(LS + path); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
@@ -577,6 +585,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     paintProfile();
     var state = !secLoaded ? "loading" : !pinSet() ? "create" : isUnlocked() ? "open" : "locked";
     if (state === gateState) return;
+    if (directEntry(state)) return;
     gateState = state;
     var g = $("gate"), msg = el("p", { class: "pin-msg err", id: "pinMsg", "aria-live": "polite" });
     if (state === "loading") { g.replaceChildren(el("p", { class: "pin-msg", text: "جارٍ التحميل…" })); return; }
@@ -999,7 +1008,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 
   VIEWS.sections = function () {
     var t = totals();
-    var head = header("الأقسام", "home", "الرئيسية");
+    var head = header(PROFILE ? "ميزانيتي" : "الأقسام", "home", "الرئيسية");
     head.classList.add("has-lock");
     head.append(el("a", { class: "lockbtn", href: "#pin", "aria-label": "الرقم السري", title: "الرقم السري" }, svg(LOCK_ICON)));
     var alerts = ALERTS.map(function (f) { return f(); }).filter(Boolean);
@@ -1011,7 +1020,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 51" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 52" })];
   };
   VIEWS.budget = function () {
     var t = totals();
