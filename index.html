@@ -381,6 +381,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     investments: { list: [] },
     sections: { names: {}, hidden: {}, custom: [] },
     notes: { list: [] },
+    charity: { income: [], spend: [] },
     zakat: { assets: items("z", ["النقد في الحسابات البنكية", "النقد في اليد", "الذهب والفضة (بقيمتها)", "الأسهم والصناديق بنية المتاجرة", "عروض التجارة", "ديون لك مرجوّة السداد"]), debtsDue: 0, goldPrice: 0, hawl: "", hawlDay: "", hawlMonth: "", paid: 0 }
   };
   var UNSCHED_CATS = ["طارئ صحي", "صيانة مفاجئة", "مناسبة اجتماعية", "سفر", "رسوم ومخالفات", "أخرى"];
@@ -394,7 +395,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   var S = {
     month: now.getFullYear() + "-" + pad(now.getMonth() + 1),
     estimates: clone(DEFAULTS.estimates), debts: clone(DEFAULTS.debts),
-    savings: clone(DEFAULTS.savings), investments: clone(DEFAULTS.investments), zakat: clone(DEFAULTS.zakat), sections: clone(DEFAULTS.sections), notes: clone(DEFAULTS.notes), security: { hash: "", salt: "" },
+    savings: clone(DEFAULTS.savings), investments: clone(DEFAULTS.investments), zakat: clone(DEFAULTS.zakat), sections: clone(DEFAULTS.sections), notes: clone(DEFAULTS.notes), charity: clone(DEFAULTS.charity), security: { hash: "", salt: "" },
     months: {}, db: null, mode: "loading", readOnly: false
   };
   function monthDoc(key) { key = key || S.month; if (!S.months[key]) S.months[key] = emptyMonth(); return S.months[key]; }
@@ -435,7 +436,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     setTimeout(function () { if (renderPending && !editing()) { renderPending = false; render(); } }, 0);
   });
 
-  var SETTINGS = ["estimates", "debts", "savings", "investments", "zakat", "sections", "notes"];
+  var SETTINGS = ["estimates", "debts", "savings", "investments", "zakat", "sections", "notes", "charity"];
   var monthUnsub = null;
   function watchMonth() {
     if (monthUnsub) { monthUnsub(); monthUnsub = null; }
@@ -608,7 +609,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 
   /* ---------- quotes (moving band at the top of every page) ---------- */
   var QUOTES = {"money": [["المال خادم جيد، لكنه سيد فاسد.", "فرانسيس بيكون"], ["ليس المهم كم من المال تجني، بل كم من المال تدخر، وكيف يعمل هذا المال من أجلك.", "روبرت كيوساكي"], ["الثروة هي القدرة على تجربة الحياة بالكامل.", "هنري ديفيد ثورو"], ["الشخص الذي لا يعرف أين يذهب ماله، سيجد نفسه دائماً يتساءل أين ذهب.", ""], ["الفقر ليس نقصاً في المال، بل هو غياب العقلية المنتجة.", ""], ["إذا كنت تعمل من أجل المال، فأنت تعطي القوة لصاحب العمل. إذا كان المال يعمل من أجلك، فأنت من يمتلك القوة.", ""], ["الثروة الحقيقية هي ما تملكه عندما تفقد كل أموالك.", ""], ["الاستثمار في المعرفة يدفع دائماً أفضل الفوائد.", "بنجامين فرانكلين"], ["الأغنياء يستثمرون في الوقت، والفقراء يستثمرون في المال.", ""], ["النجاح المالي هو عبارة عن 20% معرفة و80% سلوك وانضباط.", "ديف رامزي"]], "saving": [["لا تدخر ما تبقى بعد الإنفاق، بل أنفق ما تبقى بعد الادخار.", "وارن بافيت"], ["كل درهم تدخره هو جندي يعمل في جيش ثروتك المستقبلية.", ""], ["الادخار هو فن العيش بأقل مما تكسب لتتمكن من العيش بأكثر مما كنت تتخيل لاحقاً.", ""], ["الحرمان المؤقت من الكماليات هو الثمن الذي تدفعه مقابل الحرية الأبدية.", ""], ["الرجل الذي يشتري ما لا يحتاجه، يسرق نفسه.", "مثل سويدي"], ["حتى أصغر قطرات الماء يمكنها ملء الحوض، وكذلك أصغر المدخرات.", ""], ["الادخار لا يعني البخل، بل يعني الذكاء في إدارة الموارد.", ""], ["الفرق بين الغني والفقير هو أن الغني يدخر ثم ينفق، والفقير ينفق ثم يحاول الادخار.", ""], ["كن حذراً من النفقات الصغيرة؛ فتسريب بسيط يمكن أن يغرق سفينة كبيرة.", "بنجامين فرانكلين"], ["الادخار هو تأجيل المتعة العابرة من أجل أمان دائم.", ""]], "debt": [["الدين هو الوحش الذي يأكل مستقبلك قبل أن يصل إليك.", ""], ["من يقترض، يبيع حريته.", "أندرو كارنيجي"], ["الديون هي العبيد الجدد في العصر الحديث.", ""], ["أفضل وقت لسداد ديونك كان بالأمس، ثاني أفضل وقت هو الآن.", ""], ["لا تشترِ شيئاً لتبهر أشخاصاً لا تحبهم بأموال لا تملكها.", ""], ["القروض تجعل الحياة تبدو سهلة في البداية، لكنها تجعلها مستحيلة في النهاية.", ""], ["العيش بدون ديون هو أرقى أنواع الرفاهية.", ""], ["الفائدة البنكية على الديون لا تنام، لا تمرض، ولا تأخذ عطلة؛ إنها تلتهمك بصمت.", ""], ["السعادة لا تُشترى ببطاقة ائتمان.", ""], ["أن تنام جائعاً أفضل من أن تستيقظ مديوناً.", "مثل عربي قديم"]], "invest": [["السوق مصمم لنقل الأموال من الشخص غير الصبور إلى الشخص الصبور.", "وارن بافيت"], ["أفضل وقت لزراعة شجرة كان منذ 20 عاماً، ثاني أفضل وقت هو الآن.", "مثل صيني"], ["لا تضع كل بيضك في سلة واحدة.", ""], ["الاستثمار هو عملية تحويل الأموال من شخص يريد المتعة الفورية إلى شخص يريد الأمان المستقبلي.", ""], ["الثروة لا تأتي من الدخل العالي، بل من الأصول التي تدر دخلاً.", ""], ["الخطر الحقيقي هو عدم المخاطرة بأي شيء.", ""], ["المستثمر الذكي هو من يشتري عندما يخاف الجميع، ويبيع عندما يطمع الجميع.", ""], ["المال هو بذرة، إذا زرعتها في أرض الاستثمار أثمرت غابة من الثروة.", ""], ["الفائدة المركبة هي الأعجوبة الثامنة في العالم.", "ألبرت أينشتاين"], ["الاستثمار الناجح يتطلب وقتاً وانضباطاً وصبراً.", ""]], "life": [["المال لا يغير الناس، بل يكشف حقيقتهم فقط.", ""], ["أن تكون غنياً هو أن تملك المال، أما أن تكون ثرياً فهو أن تملك الوقت.", ""], ["الفقير ليس من لا يملك قرشاً، بل من لا يملك حلماً.", ""], ["المال يعطيك خيارات، والخيارات تعطيك الحرية.", ""], ["اجعل هدفك هو الاستقلال المالي، وليس مجرد جمع الأرقام.", ""], ["لا تدع كسب العيش ينسيك بناء حياة.", ""], ["العطاء هو جزء من الثقافة المالية الناجحة؛ المال الذي يخرج بصدق يعود ببركة.", ""], ["التخطيط المالي هو الفرق بين الحلم والواقع.", ""], ["كن سيد مالك، ولا تسمح له بأن يصبح سيدك.", ""], ["الرحلة نحو الثراء تبدأ بخطوة واحدة: قرار بأنك تستحق حياة أفضل.", ""]]};
-  var QUOTE_FOR = { savings: ["saving"], notes: ["life"], "save-monthly": ["saving"], "save-total": ["saving"], "save-withdraw": ["saving"], debts: ["debt"], "debts-owe": ["debt"], "debts-commit": ["debt"], "commit-for": ["debt"], "commit-sum": ["debt"], "debts-main": ["debt"], commits: ["debt"], "debts-due": ["debt", "life"], invest: ["invest"], zakat: ["life"], expenses: ["saving", "money"], actual: ["money"], unscheduled: ["saving"], chart: ["money", "invest"], income: ["money"], summary: ["money", "life"], overview: ["money", "life"] };
+  var QUOTE_FOR = { savings: ["saving"], notes: ["life"], "save-monthly": ["saving"], "save-total": ["saving"], "save-withdraw": ["saving"], debts: ["debt"], "debts-owe": ["debt"], "debts-commit": ["debt"], charity: ["life"], "charity-in": ["life"], "charity-out": ["life"], "charity-sum": ["life"], "commit-for": ["debt"], "commit-sum": ["debt"], "debts-main": ["debt"], commits: ["debt"], "debts-due": ["debt", "life"], invest: ["invest"], zakat: ["life"], expenses: ["saving", "money"], actual: ["money"], unscheduled: ["saving"], chart: ["money", "invest"], income: ["money"], summary: ["money", "life"], overview: ["money", "life"] };
   var lastQuote = "";
   function showQuote(view) {
     var groups = QUOTE_FOR[view] || ["money", "life"], pool = [];
@@ -986,7 +987,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 46" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 47" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -996,8 +997,66 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         tile("expenses", "المصروفات", ["actual", "unscheduled"].concat(customSecs("expenses").map(function (c) { return c.id; })).filter(secOn).map(secName).join(" · ") || "—", money(t.actFixed + t.actVar + t.unsched + t.custom)),
         tile("debts", "الديون والالتزامات", "المتبقي من الديون عليك", money(sum(S.debts.list, function (d) { return d.remaining; }))),
         tile("savings", "الادخار", "الادخار الشهري والسحوبات", money(t.saving)),
-        tile("invest", "الاستثمار", "المحفظة والربح والخسارة", money(sum(S.investments.list, function (x) { return x.current; })))),
+        tile("invest", "الاستثمار", "المحفظة والربح والخسارة", money(sum(S.investments.list, function (x) { return x.current; }))),
+        tile("charity", "الصندوق الخيري", "الدخل · المصاريف · الملخص", money(charityBalance()))),
       notice()];
+  };
+
+  /* ---------- charity fund: its own ledger, kept apart from the personal budget ---------- */
+  function charityBalance() { var c = S.charity || {}; return sum(c.income || [], amt) - sum(c.spend || [], amt); }
+  VIEWS.charity = function () {
+    var c = S.charity;
+    return [header("الصندوق الخيري", "budget", "الميزانية"),
+      el("p", { class: "hint", text: "حساب مستقل لما يصل إلى الصندوق وما يُصرف منه، ولا يدخل في دخلك ولا مصروفاتك الشخصية." }),
+      el("div", { class: "grid" },
+        tile("charity-in", "الدخل", "التبرعات وما يصل إلى الصندوق", money(sum(c.income, amt))),
+        tile("charity-out", "المصاريف", "ما صُرف من الصندوق ولمن", money(sum(c.spend, amt))),
+        tile("charity-sum", "الملخص", "الرصيد والتحليل", money(charityBalance())))];
+  };
+  function charityList(key, title, hint, empty, addText, namePh, totalLabel) {
+    return function () {
+      if (!S.charity[key]) S.charity[key] = [];
+      var list = S.charity[key], path = "settings/charity";
+      totalFns["ch" + key] = function () { return money(sum(list, amt)); };
+      return [header(title, "charity", "الصندوق الخيري"),
+        el("p", { class: "hint", text: hint }),
+        el("div", { class: "card" },
+          list.length ? sortable(list, path, list.map(function (it, i) {
+            var name = textInput("chn-" + it.id, it.name, function (v) { it.name = v; save(path); }, "البيان", namePh);
+            name.classList.add("src-name");
+            return el("div", { class: "row src-row" }, name,
+              el("input", { type: "date", class: "src-sel", id: "chd-" + it.id, value: it.date || "", "aria-label": "التاريخ", disabled: S.readOnly ? "" : null, onchange: function (e) { it.date = e.target.value; save(path); } }),
+              amountInput("cha-" + it.id, it.amount, function (v) { it.amount = v; save(path); }, "المبلغ"),
+              delBtn(it.name, remover(list, i, path)));
+          })) : el("p", { class: "empty", text: empty }),
+          addBtn(addText, list, function () { return { name: "", amount: 0, date: todayKey() }; }, path, "chn-"),
+          totalRow(totalLabel, "ch" + key))];
+    };
+  }
+  VIEWS["charity-in"] = charityList("income", "دخل الصندوق", "سجّل كل مبلغ يصل إلى الصندوق: اسم المتبرع أو الجهة، والتاريخ، والمبلغ.", "لم يُسجَّل دخل للصندوق بعد.", "إضافة دخل", "المتبرع أو مصدر المبلغ", "مجموع الدخل");
+  VIEWS["charity-out"] = charityList("spend", "مصاريف الصندوق", "سجّل كل مبلغ يُصرف من الصندوق: المستفيد أو وجه الصرف، والتاريخ، والمبلغ.", "لم تُسجَّل مصاريف للصندوق بعد.", "إضافة مصروف", "المستفيد أو وجه الصرف", "مجموع المصاريف");
+  VIEWS["charity-sum"] = function () {
+    var c = S.charity, tin = sum(c.income, amt), tout = sum(c.spend, amt), bal = tin - tout, mk = realMonth();
+    var inMonth = function (l) { return sum(l.filter(function (x) { return (x.date || "").slice(0, 7) === mk; }), amt); };
+    var months = {};
+    c.income.concat(c.spend).forEach(function (x) { var k = (x.date || "").slice(0, 7); if (/^\d{4}-\d{2}$/.test(k)) months[k] = 1; });
+    var keys = Object.keys(months).sort().reverse().slice(0, 12);
+    return [header("ملخص الصندوق", "charity", "الصندوق الخيري"),
+      kpiRow([["إجمالي الدخل", money(tin), "pos"], ["إجمالي المصاريف", money(tout), "neg"], ["الرصيد", money(bal), bal < 0 ? "neg" : "pos"]]),
+      el("div", { class: "card" }, el("h3", { text: "تحليل" }), noteList([
+        "دخل هذا الشهر " + money(inMonth(c.income)) + "، ومصاريفه " + money(inMonth(c.spend)) + ".",
+        tin ? "صُرف " + fmtPct.format(tout / tin) + " مما وصل إلى الصندوق." : null,
+        bal < 0 ? "المصاريف تجاوزت الدخل بـ " + money(-bal) + "؛ راجع القيود." : null
+      ])),
+      keys.length ? el("div", { class: "card" }, el("h3", { text: "حسب الشهر" }),
+        el("div", { class: "ctable-wrap" }, el("table", { class: "ctable" },
+          el("thead", null, el("tr", null, ["الشهر", "الدخل", "المصاريف", "الفرق"].map(function (h) { return el("th", { text: h }); }))),
+          el("tbody", null, keys.map(function (k) {
+            var a = sum(c.income.filter(function (x) { return (x.date || "").slice(0, 7) === k; }), amt), b = sum(c.spend.filter(function (x) { return (x.date || "").slice(0, 7) === k; }), amt);
+            return el("tr", null, el("td", { text: monthName(k, true) }), el("td", { class: "num", text: fmtAmt.format(a) }), el("td", { class: "num", text: fmtAmt.format(b) }), el("td", { class: "num " + (a - b < 0 ? "neg" : ""), text: fmtAmt.format(a - b) }));
+          }))))) : null,
+      el("div", { class: "card" }, el("h3", { text: "مصادر الدخل" }), shareRows(c.income.map(function (x) { return { n: x.name, v: +x.amount || 0 }; }), tin)),
+      el("div", { class: "card" }, el("h3", { text: "أوجه الصرف" }), shareRows(c.spend.map(function (x) { return { n: x.name, v: +x.amount || 0 }; }), tout))];
   };
   VIEWS.services = function () {
     return [header("الخدمات", "sections", "الأقسام"),
