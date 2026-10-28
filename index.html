@@ -65,6 +65,9 @@ button, input, select { font: inherit; color: inherit; }
 .home > .gate > .pin-form > .pin-box, .pin-below { grid-row: 3; align-self: start; margin-top: 26px; display: grid; justify-items: center; gap: 12px; }
 .reg-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--gold); background: transparent; color: var(--gold); border-radius: 6px; padding: 8px 18px; cursor: pointer; font-family: var(--font-display); }
 .reg-btn svg { width: 18px; height: 18px; }
+.forgot { display: grid; gap: 8px; justify-items: center; margin-top: 4px; }
+.link-btn { border: 0; background: none; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: .9rem; padding: 4px; }
+.link-btn:hover { color: var(--gold); }
 .gate-title { font-size: 1.15rem; color: var(--gold); font-weight: 500; }
 .gate-hint { margin: -6px 0 0; color: var(--muted); font-size: .85rem; }
 .pin-pair { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
@@ -579,7 +582,23 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         else msg.textContent = "الرقم السري غير صحيح.";
         inp.value = ""; inp.focus();
       } },
-      enterButton(), el("div", { class: "pin-box" }, pinField("pinInput", "الرقم السري"), msg)));
+      enterButton(), el("div", { class: "pin-box" }, pinField("pinInput", "الرقم السري"), msg, forgotPin())));
+  }
+  /* forgetting the PIN removes it after one confirmation; the data stays (the PIN is a privacy screen, not encryption) */
+  function forgotPin() {
+    if (S.readOnly) return null;
+    var wrap = el("div", { class: "forgot" });
+    function ask() {
+      wrap.replaceChildren(el("p", { class: "gate-hint", text: "سيُلغى الرقم السري وتبقى كل بياناتك كما هي. بعد الدخول تقدر تسجل رقمًا جديدًا." }),
+        el("div", { class: "pin-actions" },
+          el("button", { class: "enter small", type: "button", text: "نعم، ألغِ الرقم السري", onclick: function () {
+            S.security = { hash: "", salt: "" }; flush("settings/security"); setUnlocked(false); gateState = ""; renderGate();
+          } }),
+          el("button", { class: "add", type: "button", text: "إلغاء", onclick: idle })));
+    }
+    function idle() { wrap.replaceChildren(el("button", { class: "link-btn", type: "button", text: "نسيت الرقم السري؟", onclick: ask })); }
+    idle();
+    return wrap;
   }
 
   /* ---------- quotes (moving band at the top of every page) ---------- */
@@ -964,7 +983,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 43" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 44" })];
   };
   VIEWS.budget = function () {
     var t = totals();
