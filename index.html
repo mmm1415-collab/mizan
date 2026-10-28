@@ -532,12 +532,14 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       var h = 5381, str = salt + ":" + pin; for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return "d" + (h >>> 0).toString(16);
     }
   }
-  async function checkPin(pin) { return !!S.security.hash && (await hashPin(pin, S.security.salt)) === S.security.hash; }
-  async function setPin(pin) { var salt = uid() + uid(); S.security = { salt: salt, hash: await hashPin(pin, salt) }; flush("settings/security"); setUnlocked(true); gateState = ""; }
+  /* only a PIN registered after it came back (v: 2) counts; one saved before it was removed on 2026-10-28 is ignored */
+  function pinSet() { return !!S.security.hash && S.security.v === 2; }
+  async function checkPin(pin) { return pinSet() && (await hashPin(pin, S.security.salt)) === S.security.hash; }
+  async function setPin(pin) { var salt = uid() + uid(); S.security = { salt: salt, hash: await hashPin(pin, salt), v: 2 }; flush("settings/security"); setUnlocked(true); gateState = ""; }
   function setUnlocked(on) { try { if (on) sessionStorage.setItem(LS + "unlocked", S.security.hash || "1"); else sessionStorage.removeItem(LS + "unlocked"); } catch (e) {} unlockedMem = on ? (S.security.hash || "1") : ""; }
   var unlockedMem = "";
   function isUnlocked() {
-    if (!S.security.hash) return true;
+    if (!pinSet()) return true;
     var v = unlockedMem; try { v = v || sessionStorage.getItem(LS + "unlocked") || ""; } catch (e) {}
     return v === S.security.hash;
   }
@@ -553,7 +555,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       note ? el("div", { class: "pin-below" }, el("p", { class: "pin-msg ok", text: note })) : null));
   }
   function renderGate() {
-    var state = !secLoaded ? "loading" : "open"; /* the PIN was removed at Majed's request (2026-10-28); entry is open */
+    var state = !secLoaded ? "loading" : !pinSet() ? "create" : isUnlocked() ? "open" : "locked";
     if (state === gateState) return;
     gateState = state;
     var g = $("gate"), msg = el("p", { class: "pin-msg err", id: "pinMsg", "aria-live": "polite" });
@@ -588,7 +590,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         else msg.textContent = "الرقم السري غير صحيح.";
         inp.value = ""; inp.focus();
       } },
-      enterButton(), el("div", { class: "pin-box" }, pinField("pinInput", "الرقم السري"), msg, forgotPin())));
+      enterButton(), el("div", { class: "pin-box" }, pinField("pinInput", "الرقم السري"), msg)));
   }
   /* forgetting the PIN removes it after one confirmation; the data stays (the PIN is a privacy screen, not encryption) */
   function forgotPin() {
@@ -978,6 +980,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   VIEWS.sections = function () {
     var t = totals();
     var head = header("الأقسام", "home", "الرئيسية");
+    head.classList.add("has-lock");
+    head.append(el("a", { class: "lockbtn", href: "#pin", "aria-label": "الرقم السري", title: "الرقم السري" }, svg(LOCK_ICON)));
     var alerts = ALERTS.map(function (f) { return f(); }).filter(Boolean);
     return [head,
       alerts.length ? el("div", { class: "alerts" }, alerts.map(function (a) {
@@ -987,7 +991,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 47" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 48" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1489,8 +1493,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("p", { class: "hint", text: "الحساب تقديري، وفي الحالات الخاصة يُرجع إلى أهل العلم." })];
   };
 
-  var pinView = function () {
-    var has = !!S.security.hash, msg = el("p", { class: "pin-msg", "aria-live": "polite" });
+  VIEWS.pin = function () {
+    var has = pinSet(), msg = el("p", { class: "pin-msg", "aria-live": "polite" });
     function field(id, label) { return el("label", null, label, el("input", { id: id, type: "password", inputmode: "numeric", autocomplete: "off", maxlength: "8", class: "amt", disabled: S.readOnly ? "" : null })); }
     function val(id) { var n = $(id); return n ? normPin(n.value) : ""; }
     async function submit(e) {
@@ -2087,7 +2091,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var v = location.hash.slice(1);
     registerCustomViews(); registerDebtViews(); registerNoteViews();
     if (!VIEWS[v]) v = /^debt-/.test(v) ? "debts-owe" : /^owed-/.test(v) ? "debts-due" : /^note-/.test(v) ? "notes" : "home";
-    if (v !== "home" && !secLoaded) v = "home";
+    if (v !== "home" && (!secLoaded || !isUnlocked())) v = "home";
     var changed = v !== current;
     if (changed) secEditing = "";
     if (changed || !$("quoteText").textContent) showQuote(v);
