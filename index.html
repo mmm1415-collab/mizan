@@ -272,7 +272,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 .kpi { background: var(--panel); padding: 12px; display: grid; gap: 2px; text-align: center; min-width: 0; }
 .kpi span { color: var(--muted); font-size: .8rem; }
 .kpi b { font-family: var(--font-display); font-size: 1.1rem; overflow-wrap: anywhere; }
-@media (max-width: 480px) { .kpis { grid-template-columns: 1fr 1fr; } .kpis .kpi:last-child { grid-column: 1 / -1; } }
+@media (max-width: 480px) { .kpis { grid-template-columns: 1fr 1fr; } .kpis .kpi:last-child:nth-child(odd) { grid-column: 1 / -1; } }
 .stack { display: flex; height: 14px; border-radius: 99px; overflow: hidden; background: var(--panel-2); }
 .stack i { display: block; height: 100%; }
 .legend { display: grid; gap: 6px; }
@@ -1050,7 +1050,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 57" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 58" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1059,7 +1059,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         tile("income", "الدخل والموارد", "الراتب وأي دخل أو مورد إضافي", money(t.income)),
         tile("expenses", "المصروفات", ["actual", "unscheduled"].concat(customSecs("expenses").map(function (c) { return c.id; })).filter(secOn).map(secName).join(" · ") || "—", money(t.actFixed + t.actVar + t.unsched + t.custom)),
         tile("debts", "الديون والالتزامات", "المتبقي من الديون عليك", money(sum(S.debts.list, function (d) { return d.remaining; }))),
-        tile("savings", "الادخار", "بيانات الادخار والسحوبات", money(t.saving)),
+        tile("savings", "الادخار", "الإيداع والسحب والرصيد", money(t.saving)),
         tile("invest", "الاستثمار", "المحفظة والربح والخسارة", money(sum(S.investments.list, function (x) { return x.current; }))),
         tile("charity", "الصندوق الخيري", "الدخل · المصاريف · الملخص", money(charityBalance()))),
       notice()];
@@ -1410,25 +1410,18 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var t = totals();
     return [header("الادخار", "budget", "الميزانية"), monthBar(),
       el("div", { class: "grid" },
-        tile("save-data", "بيانات الادخار", "المبلغ التأسيسي · الإيداع · السحب", null),
-        tile("save-total", "إجمالي الادخار", "المدخر والمسحوب والرصيد", null),
+        tile("save-total", "إجمالي الادخار", "المبلغ التأسيسي · الإيداع · السحب · الرصيد", null),
         tile("save-sum", "ملخص الادخار", "نسبة الادخار والمتوسط والتحليل", null)),
-      el("p", { class: "hint", text: "ادخار الشهر يُحسب من «الإيداع» في «بيانات الادخار»." })];
+      el("p", { class: "hint", text: "ادخار الشهر يُحسب من «الإيداع» في «إجمالي الادخار»." })];
   };
 
-  VIEWS["save-data"] = function () {
-    var t = totals();
-    return [header("بيانات الادخار", "savings", "الادخار"), monthBar(),
-      el("div", { class: "grid" },
-        tile("save-base", "المبلغ التأسيسي", "ما كان مدخرًا في كل بند قبل البدء", money(sum(saveItems(), saveBase))),
-        tile("save-monthly", "الإيداع", "أقساط الشهر لكل بند ادخار", money(t.saving)),
-        tile("save-withdraw", "السحب", "ما سحبته من مدخراتك هذا الشهر", money(withdrawTotal(monthDoc()))))];
-  };
+  /* older links to the merged «بيانات الادخار» page */
+  VIEWS["save-data"] = function () { setTimeout(function () { go("save-total"); }, 0); return []; };
 
   VIEWS["save-base"] = function () {
     var list = saveItems(), path = "settings/savings";
     totalFns.sbase = function () { return money(sum(list, saveBase)); };
-    return [header("المبلغ التأسيسي", "save-data", "بيانات الادخار"),
+    return [header("المبلغ التأسيسي", "save-total", "إجمالي الادخار"),
       el("p", { class: "hint", text: "اكتب لكل بند ادخار المبلغ الذي كان مدخرًا فيه قبل أن تبدأ التسجيل. يُضاف إلى الرصيد الحالي مرة واحدة، ولا يتغير بتغير الشهر." }),
       el("div", { class: "card" },
         list.length ? el("div", { class: "rows" }, list.map(function (it) {
@@ -1451,7 +1444,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   function registerSaveViews() { saveItems().forEach(function (it) { VIEWS["sav-" + it.id] = function () { return saveDetail(it); }; }); }
 
   VIEWS["save-monthly"] = function () {
-    var head = header("الإيداع", "save-data", "بيانات الادخار");
+    var head = header("الإيداع", "save-total", "إجمالي الادخار");
     var wait = saveMonthsReady("save-monthly", head); if (wait) return wait;
     var m = monthDoc(), path = "settings/savings", list = saveItems();
     function allIn() { return sum(list, function (it) { return saveIn(it.id); }); }
@@ -1495,7 +1488,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           el("div", { class: "subform" },
             el("label", null, "الإيداع في " + monthName(S.month, true), amountInput("sva-" + it.id, savedOf(m, it.id), function (v) { setSaved(m, it.id, v); save(mpath); }, "إيداع " + (it.name || "الادخار") + " هذا الشهر")))),
         totalRow("المبلغ التأسيسي", "sdBase"), totalRow("إجمالي الإيداعات", "sdIn"), totalRow("السحوبات منه", "sdOut"), totalRow("الرصيد الحالي", "sdBal")),
-      el("p", { class: "hint", text: "الرصيد الحالي = المبلغ التأسيسي + إيداعات جميع الأشهر − السحوبات. غيّر الشهر من الأعلى لتسجيل إيداع شهر آخر. والمبلغ التأسيسي يُعدّل من «المبلغ التأسيسي» في «بيانات الادخار»." })];
+      el("p", { class: "hint", text: "الرصيد الحالي = المبلغ التأسيسي + إيداعات جميع الأشهر − السحوبات. غيّر الشهر من الأعلى لتسجيل إيداع شهر آخر. والمبلغ التأسيسي يُعدّل من «المبلغ التأسيسي» في «إجمالي الادخار»." })];
   }
 
   VIEWS["save-withdraw"] = function () {
@@ -1503,7 +1496,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     if (!m.withdrawals) m.withdrawals = [];
     var list = m.withdrawals;
     totalFns.wd = function () { return money(withdrawTotal(m)); };
-    return [header("السحب", "save-data", "بيانات الادخار"), monthBar(),
+    return [header("السحب", "save-total", "إجمالي الادخار"), monthBar(),
       el("p", { class: "hint", text: "سجّل كل مبلغ سحبته من مدخراتك: سببه، ومن أي بند ادخار سحبته، ومبلغه. يُخصم من رصيد الادخار في «إجمالي الادخار»." }),
       el("div", { class: "card" },
         list.length ? sortable(list, path, list.map(function (w) {
@@ -1544,7 +1537,12 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var months = keys.filter(function (k) { return S.months[k]; }).map(function (k) { var m = S.months[k]; return { k: k, v: sum(list, function (it) { return savedOf(m, it.id); }), w: withdrawTotal(m), m: m }; }).filter(function (r) { return r.v || r.w; });
     var base = sum(list, saveBase), all = sum(months, function (r) { return r.v; }), out = sum(months, function (r) { return r.w; }), thisYear = sum(months.filter(function (r) { return r.k.slice(0, 4) === year; }), function (r) { return r.v; });
     function itemOut(id) { return sum(months, function (r) { return sum((r.m.withdrawals || []).filter(function (w) { return w.from === id; }), amt); }); }
-    return [head,
+    var t = totals();
+    return [head, monthBar(),
+      el("div", { class: "grid" },
+        tile("save-base", "المبلغ التأسيسي", "ما كان مدخرًا في كل بند قبل البدء", money(base)),
+        tile("save-monthly", "الإيداع", "إيداعات " + monthName(S.month, true) + " لكل بند", money(t.saving)),
+        tile("save-withdraw", "السحب", "سحوبات " + monthName(S.month, true), money(withdrawTotal(monthDoc())))),
       el("div", { class: "kpis" },
         el("div", { class: "kpi" }, el("span", { text: "المبلغ التأسيسي" }), el("b", { class: "num", text: money(base) })),
         el("div", { class: "kpi" }, el("span", { text: "الإيداعات" }), el("b", { class: "num", text: money(all) })),
