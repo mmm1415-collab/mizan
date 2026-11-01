@@ -687,6 +687,35 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     return el("select", { id: id, class: "src-sel", "aria-label": "نوع الدخل", disabled: S.readOnly ? "" : null, onchange: function (e) { it.src = e.target.value; save(path); } },
       [["salary", "راتب"], ["pension", "دخل إضافي"]].map(function (o) { var n = el("option", { value: o[0], text: o[1] }); if (incomeSrc(it) === o[0]) n.selected = true; return n; }));
   }
+  /* short list line that opens an item's own page (#i/<kind>/<id>), and that page */
+  var DETAIL = {};
+  var CHEV = ICON_BACK.replace("M9 6l6 6-6 6", "M15 6l-6 6 6 6");
+  function lineRow(kind, id, title, sub, label, fig, cls) {
+    return el("div", { class: "debt-row" },
+      el("a", { class: "debt-link", href: "#i/" + kind + "/" + id },
+        el("span", { class: "debt-party" }, el("b", { text: title || "بلا اسم" }), sub ? el("small", { text: sub }) : null),
+        el("span", { class: "debt-left num " + (cls || "") }, el("small", { text: label }), fig),
+        svg(CHEV)));
+  }
+  function addLine(text, list, make, path, kind, focusId) {
+    if (S.readOnly) return null;
+    return el("button", { class: "add", type: "button", text: "+ " + text, onclick: function () {
+      var it = make(); it.id = uid(); list.push(it); save(path); go("i/" + kind + "/" + it.id);
+      setTimeout(function () { var n = $(focusId + it.id); if (n) n.focus(); }, 0);
+    } });
+  }
+  /* o: it, list, path, back, backLabel, title, nameLabel, name (input), fields [], foot, month, after [] */
+  function detailPage(o) {
+    return [header(o.title || "بلا اسم", o.back, o.backLabel), o.month ? monthBar() : null,
+      el("div", { class: "card" },
+        el("div", { class: "item" },
+          el("div", { class: "item-head" },
+            el("label", { class: "why" }, o.nameLabel, o.name),
+            delBtn(o.title, function () { var i = o.list.indexOf(o.it); if (i >= 0) o.list.splice(i, 1); save(o.path); go(o.back); })),
+          el("div", { class: "subform" }, o.fields),
+          o.foot || null)),
+      el("p", { class: "hint", text: "التعديل يُحفظ تلقائيًا. للحذف اضغط «حذف» ثم أكّد." })].concat(o.after || []);
+  }
   function srcRow(name, it, path, amount, del) { name.classList.add("src-name"); return el("div", { class: "row src-row" }, name, srcSelect("src-" + it.id, it, path), amount, del); }
   /* this month's deductions per source: expenses, debt instalments, and commitments on you */
   function srcTotals(key) {
@@ -1021,7 +1050,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 56" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 57" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1142,23 +1171,33 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       totalFns.act = function () { return money(sum(list, function (x) { return m.actual[x.id] || 0; })); };
       return [header(title, o.back(), o.backLabel()), monthBar(),
         el("div", { class: "card" },
-          list.length ? sortable(list, itemsPath, list.map(function (it, i) {
-            return srcRow(textInput("an-" + it.id, it.name, function (v) { it.name = v; save(itemsPath); }, "اسم البند", "اسم البند"), it, itemsPath,
-              amountInput("aa-" + it.id, m.actual[it.id], function (v) { m.actual[it.id] = v; save(path); }, "مصروف " + it.name),
-              delBtn(it.name, remover(list, i, itemsPath)));
+          list.length ? sortable(list, itemsPath, list.map(function (it) {
+            return lineRow(o.kind, it.id, it.name, it.src ? "من " + SRC_NAME[it.src] : "", "مبلغ الشهر", money(m.actual[it.id] || 0));
           })) : el("p", { class: "empty", text: "لا توجد بنود بعد. أضف أول بند." }),
-          addBtn("إضافة بند", list, function () { return { name: "", amount: 0 }; }, itemsPath, "an-"),
+          addLine("إضافة بند", list, function () { return { name: "", amount: 0 }; }, itemsPath, o.kind, "an-"),
           totalRow("مجموع الشهر", "act")),
         copyPrevBtn(o.copyKey, list),
-        el("p", { class: "hint", text: "البنود نفسها تبقى لكل الأشهر، والمبالغ تُسجَّل لكل شهر على حدة." })];
+        el("p", { class: "hint", text: "البنود نفسها تبقى لكل الأشهر، والمبالغ تُسجَّل لكل شهر على حدة. اضغط على أي بند لتعديله أو حذفه." })];
     };
   }
-  VIEWS.actual = itemsView({ list: function () { return S.estimates.fixed; }, itemsPath: "settings/estimates", title: function () { return secName("actual"); },
-    back: function () { return "expenses"; }, backLabel: function () { return "المصروفات"; }, copyKey: "fixed" });
+  function itemsDetail(o, view) {
+    DETAIL[o.kind] = { list: o.list, back: view, render: function (it) {
+      var m = monthDoc(), path = "months/" + S.month;
+      return detailPage({ it: it, list: o.list(), path: o.itemsPath, back: view, backLabel: o.title(), title: it.name, month: true,
+        nameLabel: "اسم البند", name: textInput("an-" + it.id, it.name, function (v) { it.name = v; save(o.itemsPath); }, "اسم البند", "اسم البند"),
+        fields: [el("label", null, "المبلغ في " + monthName(S.month, true), amountInput("aa-" + it.id, m.actual[it.id], function (v) { m.actual[it.id] = v; save(path); }, "مصروف " + it.name)),
+          el("label", null, "جهة الاستقطاع", srcSelect("src-" + it.id, it, o.itemsPath))],
+        after: [el("p", { class: "hint", text: "الاسم وجهة الاستقطاع ثابتان لكل الأشهر، والمبلغ لهذا الشهر فقط. غيّر الشهر من الأعلى لتسجيل مبلغ شهر آخر." })] });
+    } };
+  }
+  var ACT_OPTS = { kind: "act", list: function () { return S.estimates.fixed; }, itemsPath: "settings/estimates", title: function () { return secName("actual"); },
+    back: function () { return "expenses"; }, backLabel: function () { return "المصروفات"; }, copyKey: "fixed" };
+  VIEWS.actual = itemsView(ACT_OPTS); itemsDetail(ACT_OPTS, "actual");
   function registerCustomViews() {
     customSecs().forEach(function (c) {
-      VIEWS["cs-" + c.id] = itemsView({ list: function () { c.items = c.items || []; return c.items; }, itemsPath: "settings/sections", title: function () { return secName(c.id); },
-        back: function () { return c.parent; }, backLabel: function () { return c.parent === "actual" ? secName("actual") : "المصروفات"; }, copyKey: c.id });
+      var co = { kind: "cs" + c.id, list: function () { c.items = c.items || []; return c.items; }, itemsPath: "settings/sections", title: function () { return secName(c.id); },
+        back: function () { return c.parent; }, backLabel: function () { return c.parent === "actual" ? secName("actual") : "المصروفات"; }, copyKey: c.id };
+      VIEWS["cs-" + c.id] = itemsView(co); itemsDetail(co, "cs-" + c.id);
     });
   }
 
@@ -1168,19 +1207,20 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     return [header(secName("unscheduled"), "expenses", "المصروفات"), monthBar(),
       el("p", { class: "hint", text: "مصروفات لم تكن في الخطة، مثل عطل مفاجئ في السيارة أو زيارة طبية طارئة." }),
       el("div", { class: "card" },
-        list.length ? sortable(list, path, list.map(function (it, i) {
-          return el("div", { class: "item" },
-            el("div", { class: "item-head" },
-              textInput("un-" + it.id, it.name, function (v) { it.name = v; save(path); }, "وصف المصروف", "مثال: تغيير إطارات السيارة"),
-              delBtn(it.name, remover(list, i, path))),
-            el("div", { class: "subform" },
-              el("label", null, "التصنيف", select("uc-" + it.id, UNSCHED_CATS, it.category, function (v) { it.category = v; save(path); }, "التصنيف")),
-              el("label", null, "المبلغ", amountInput("ua-" + it.id, it.amount, function (v) { it.amount = v; save(path); })),
-              el("label", null, "جهة الاستقطاع", srcSelect("us-" + it.id, it, path))));
+        list.length ? sortable(list, path, list.map(function (it) {
+          return lineRow("uns", it.id, it.name, it.category, "المبلغ", money(+it.amount || 0));
         })) : el("p", { class: "empty", text: "لا توجد مصروفات غير مجدولة في هذا الشهر." }),
-        addBtn("إضافة مصروف", list, function () { return { name: "", category: UNSCHED_CATS[0], amount: 0 }; }, path, "un-"),
+        addLine("إضافة مصروف", list, function () { return { name: "", category: UNSCHED_CATS[0], amount: 0 }; }, path, "uns", "un-"),
         totalRow("مجموع الشهر", "un"))];
   };
+  DETAIL.uns = { list: function () { return monthDoc().unscheduled; }, back: "unscheduled", render: function (it) {
+    var path = "months/" + S.month;
+    return detailPage({ it: it, list: monthDoc().unscheduled, path: path, back: "unscheduled", backLabel: secName("unscheduled"), title: it.name,
+      nameLabel: "وصف المصروف", name: textInput("un-" + it.id, it.name, function (v) { it.name = v; save(path); }, "وصف المصروف", "مثال: تغيير إطارات السيارة"),
+      fields: [el("label", null, "التصنيف", select("uc-" + it.id, UNSCHED_CATS, it.category, function (v) { it.category = v; save(path); }, "التصنيف")),
+        el("label", null, "المبلغ", amountInput("ua-" + it.id, it.amount, function (v) { it.amount = v; save(path); })),
+        el("label", null, "جهة الاستقطاع", srcSelect("us-" + it.id, it, path))] });
+  } };
 
   /* ---------- summaries ---------- */
   function shareRows(rows, total) {
@@ -1243,15 +1283,24 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       return [header(title, "commits", "الالتزامات"),
         el("p", { class: "hint", text: hint }),
         el("div", { class: "card" },
-          list.length ? sortable(list, path, list.map(function (c, i) {
-            var name = textInput(pre + "p-" + c.id, c.party, function (v) { c.party = v; save(path); }, "جهة الالتزام", "جهة الالتزام"),
-              amount = amountInput(pre + "a-" + c.id, c.amount, function (v) { c.amount = v; save(path); }, "مبلغ الالتزام"), del = delBtn(c.party, remover(list, i, path));
-            return withSrc ? srcRow(name, c, path, amount, del) : el("div", { class: "row" }, name, amount, del);
+          list.length ? sortable(list, path, list.map(function (c) {
+            return lineRow("c" + pre, c.id, c.party, withSrc && c.src ? "من " + SRC_NAME[c.src] : "", "المبلغ", money(+c.amount || 0));
           })) : el("p", { class: "empty", text: empty }),
-          addBtn("إضافة التزام", list, function () { return { party: "", amount: 0 }; }, path, pre + "p-"),
+          addLine("إضافة التزام", list, function () { return { party: "", amount: 0 }; }, path, "c" + pre, pre + "p-"),
           totalRow("مجموع " + title, pre))];
     };
   }
+  function commitDetail(key, title, view, pre, withSrc) {
+    DETAIL["c" + pre] = { list: function () { return S.debts[key] || []; }, back: view, render: function (c) {
+      var path = "settings/debts";
+      return detailPage({ it: c, list: S.debts[key], path: path, back: view, backLabel: title, title: c.party,
+        nameLabel: "جهة الالتزام", name: textInput(pre + "p-" + c.id, c.party, function (v) { c.party = v; save(path); }, "جهة الالتزام", "جهة الالتزام"),
+        fields: [el("label", null, "مبلغ الالتزام", amountInput(pre + "a-" + c.id, c.amount, function (v) { c.amount = v; save(path); }, "مبلغ الالتزام")),
+          withSrc ? el("label", null, "جهة الاستقطاع", srcSelect("src-" + c.id, c, path)) : null].filter(Boolean) });
+    } };
+  }
+  commitDetail("commit", "الالتزامات عليك", "debts-commit", "c", true);
+  commitDetail("commitFor", "الالتزامات لك", "commit-for", "f", false);
   VIEWS["debts-commit"] = commitList("commit", "الالتزامات عليك", "ما التزمت به تجاه الجهات المختلفة، مثل عقد إيجار أو كفالة أو اشتراك سنوي. اكتب الجهة والمبلغ.", "لا توجد التزامات عليك مسجلة.", "c", true);
   VIEWS["commit-for"] = commitList("commitFor", "الالتزامات لك", "ما التزمت به جهات أو أشخاص لصالحك، مثل مستأجر أو عقد صيانة مدفوع مقدمًا. اكتب الجهة والمبلغ.", "لا توجد التزامات لك مسجلة.", "f");
 
@@ -1457,21 +1506,24 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     return [header("السحب", "save-data", "بيانات الادخار"), monthBar(),
       el("p", { class: "hint", text: "سجّل كل مبلغ سحبته من مدخراتك: سببه، ومن أي بند ادخار سحبته، ومبلغه. يُخصم من رصيد الادخار في «إجمالي الادخار»." }),
       el("div", { class: "card" },
-        list.length ? sortable(list, path, list.map(function (w, i) {
-          var opts = [el("option", { value: "", text: "— من أي ادخار؟ —" })].concat(items.map(function (it, n) {
-            var o = el("option", { value: it.id, text: fmt.format(n + 1) + ". " + (it.name || "بلا اسم") }); if (it.id === w.from) o.selected = true; return o;
-          }));
-          return el("div", { class: "item" },
-            el("div", { class: "item-head" },
-              el("label", { class: "why" }, "سبب السحب", textInput("wn-" + w.id, w.name, function (v) { w.name = v; save(path); }, "سبب السحب", "مثال: إصلاح السيارة")),
-              delBtn(w.name, remover(list, i, path))),
-            el("div", { class: "subform" },
-              el("label", null, "من بند الادخار", el("select", { id: "wf-" + w.id, disabled: S.readOnly ? "" : null, onchange: function (e) { w.from = e.target.value; save(path); } }, opts)),
-              el("label", null, "المبلغ المسحوب", amountInput("wa-" + w.id, w.amount, function (v) { w.amount = v; save(path); }, "المبلغ المسحوب"))));
+        list.length ? sortable(list, path, list.map(function (w) {
+          var from = items.filter(function (it) { return it.id === w.from; })[0];
+          return lineRow("wd", w.id, w.name, from ? "من " + (from.name || "بلا اسم") : "", "المسحوب", money(+w.amount || 0));
         })) : el("p", { class: "empty", text: "لا توجد سحوبات في هذا الشهر." }),
-        addBtn("إضافة سحب", list, function () { return { name: "", from: items[0] ? items[0].id : "", amount: 0 }; }, path, "wn-"),
+        addLine("إضافة سحب", list, function () { return { name: "", from: items[0] ? items[0].id : "", amount: 0 }; }, path, "wd", "wn-"),
         totalRow("مجموع سحوبات الشهر", "wd"))];
   };
+
+  DETAIL.wd = { list: function () { return monthDoc().withdrawals || []; }, back: "save-withdraw", render: function (w) {
+    var path = "months/" + S.month, items = saveItems();
+    var opts = [el("option", { value: "", text: "— من أي ادخار؟ —" })].concat(items.map(function (it, n) {
+      var o = el("option", { value: it.id, text: fmt.format(n + 1) + ". " + (it.name || "بلا اسم") }); if (it.id === w.from) o.selected = true; return o;
+    }));
+    return detailPage({ it: w, list: monthDoc().withdrawals, path: path, back: "save-withdraw", backLabel: "السحب", title: w.name,
+      nameLabel: "سبب السحب", name: textInput("wn-" + w.id, w.name, function (v) { w.name = v; save(path); }, "سبب السحب", "مثال: إصلاح السيارة"),
+      fields: [el("label", null, "من بند الادخار", el("select", { id: "wf-" + w.id, disabled: S.readOnly ? "" : null, onchange: function (e) { w.from = e.target.value; save(path); } }, opts)),
+        el("label", null, "المبلغ المسحوب", amountInput("wa-" + w.id, w.amount, function (v) { w.amount = v; save(path); }, "المبلغ المسحوب"))] });
+  } };
 
   /* every month that may hold data: all stored months on this device, or a wide window when synced */
   function knownMonths() {
@@ -1533,27 +1585,28 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     return [header("المحفظة الاستثمارية", "invest", "الاستثمار"),
       el("p", { class: "hint", text: "سجّل كل استثمار بالمبلغ الذي دفعته وقيمته الحالية لمعرفة الربح أو الخسارة." }),
       el("div", { class: "card" },
-        list.length ? sortable(list, path, list.map(function (x, i) {
-          var foot = el("div", { class: "item-foot" });
-          function upd() {
-            var d = (x.current || 0) - (x.invested || 0);
-            foot.textContent = x.invested ? (d < 0 ? "خسارة " : "ربح ") + money(Math.abs(d)) + " (" + fmtPct.format(Math.abs(d) / x.invested) + ")" : "أدخل المبلغ المستثمر والقيمة الحالية";
-            foot.className = "item-foot " + (!x.invested ? "" : d < 0 ? "neg" : "pos");
-          }
-          upd();
-          return el("div", { class: "item" },
-            el("div", { class: "item-head" },
-              textInput("vn-" + x.id, x.name, function (v) { x.name = v; save(path); }, "اسم الاستثمار", "مثال: صندوق أسهم محلية"),
-              delBtn(x.name, remover(list, i, path))),
-            el("div", { class: "subform" },
-              el("label", null, "النوع", select("vt-" + x.id, INVEST_TYPES, x.type, function (v) { x.type = v; save(path); }, "نوع الاستثمار")),
-              el("label", null, "المبلغ المستثمر", amountInput("vi-" + x.id, x.invested, function (v) { x.invested = v; upd(); save(path); })),
-              el("label", null, "القيمة الحالية", amountInput("vc-" + x.id, x.current, function (v) { x.current = v; upd(); save(path); }))),
-            foot);
+        list.length ? sortable(list, path, list.map(function (x) {
+          var d = (+x.current || 0) - (+x.invested || 0);
+          return lineRow("inv", x.id, x.name, x.type, "القيمة الحالية", money(+x.current || 0), !x.invested ? "" : d < 0 ? "neg" : "pos");
         })) : el("p", { class: "empty", text: "لا توجد استثمارات مسجلة." }),
-        addBtn("إضافة استثمار", list, function () { return { name: "", type: INVEST_TYPES[0], invested: 0, current: 0 }; }, path, "vn-"),
+        addLine("إضافة استثمار", list, function () { return { name: "", type: INVEST_TYPES[0], invested: 0, current: 0 }; }, path, "inv", "vn-"),
         totalRow("إجمالي المستثمر", "ivIn"), totalRow("القيمة الحالية", "ivCur"), totalRow("الربح أو الخسارة", "ivPl"))];
   };
+
+  DETAIL.inv = { list: function () { return S.investments.list; }, back: "invest-list", render: function (x) {
+    var path = "settings/investments", foot = el("div", { class: "item-foot" });
+    function upd() {
+      var d = (x.current || 0) - (x.invested || 0);
+      foot.textContent = x.invested ? (d < 0 ? "خسارة " : "ربح ") + money(Math.abs(d)) + " (" + fmtPct.format(Math.abs(d) / x.invested) + ")" : "أدخل المبلغ المستثمر والقيمة الحالية";
+      foot.className = "item-foot " + (!x.invested ? "" : d < 0 ? "neg" : "pos");
+    }
+    upd();
+    return detailPage({ it: x, list: S.investments.list, path: path, back: "invest-list", backLabel: "المحفظة الاستثمارية", title: x.name, foot: foot,
+      nameLabel: "اسم الاستثمار", name: textInput("vn-" + x.id, x.name, function (v) { x.name = v; save(path); }, "اسم الاستثمار", "مثال: صندوق أسهم محلية"),
+      fields: [el("label", null, "النوع", select("vt-" + x.id, INVEST_TYPES, x.type, function (v) { x.type = v; save(path); }, "نوع الاستثمار")),
+        el("label", null, "المبلغ المستثمر", amountInput("vi-" + x.id, x.invested, function (v) { x.invested = v; upd(); save(path); })),
+        el("label", null, "القيمة الحالية", amountInput("vc-" + x.id, x.current, function (v) { x.current = v; upd(); save(path); }))] });
+  } };
 
   VIEWS.zakat = function () {
     var c = zakatCalc();
@@ -1662,17 +1715,20 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     totalFns.inc = function () { return money(sum(list, amt)); };
     return [header("مصادر الدخل", "income", "الدخل"), monthBar(),
       el("div", { class: "card" },
-        list.length ? sortable(list, path, list.map(function (it, i) {
-          var name = textInput("in-" + it.id, it.name, function (v) { it.name = v; save(path); }, "مصدر الدخل", "مصدر الدخل");
-          name.classList.add("src-name");
-          return el("div", { class: "row src-row" }, name, incomeSrcSelect("is-" + it.id, it, path),
-            amountInput("ia-" + it.id, it.amount, function (v) { it.amount = v; save(path); }, "مبلغ " + it.name),
-            delBtn(it.name, remover(list, i, path)));
+        list.length ? sortable(list, path, list.map(function (it) {
+          return lineRow("inc", it.id, it.name, incomeSrc(it) === "salary" ? "راتب" : "دخل إضافي", "المبلغ", money(+it.amount || 0));
         })) : el("p", { class: "empty", text: "لا يوجد دخل مسجل لهذا الشهر." }),
-        addBtn("إضافة مصدر دخل", list, function () { return { name: "", amount: 0 }; }, path, "in-"),
+        addLine("إضافة مصدر دخل", list, function () { return { name: "", amount: 0 }; }, path, "inc", "in-"),
         totalRow("مجموع دخل الشهر", "inc")),
       copyPrevBtn("income")];
   };
+  DETAIL.inc = { list: function () { return monthDoc().income; }, back: "income-list", render: function (it) {
+    var path = "months/" + S.month;
+    return detailPage({ it: it, list: monthDoc().income, path: path, back: "income-list", backLabel: "مصادر الدخل", title: it.name,
+      nameLabel: "مصدر الدخل", name: textInput("in-" + it.id, it.name, function (v) { it.name = v; save(path); }, "مصدر الدخل", "مثال: الراتب"),
+      fields: [el("label", null, "نوع الدخل", incomeSrcSelect("is-" + it.id, it, path)),
+        el("label", null, "المبلغ في " + monthName(S.month, true), amountInput("ia-" + it.id, it.amount, function (v) { it.amount = v; save(path); }, "مبلغ " + it.name))] });
+  } };
 
   VIEWS.overview = function () {
     var m = monthDoc(), t = totals();
@@ -2203,7 +2259,9 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   function render() {
     var v = location.hash.slice(1);
     registerCustomViews(); registerDebtViews(); registerNoteViews(); registerCharityViews(); registerSaveViews();
-    if (!VIEWS[v]) v = /^debt-/.test(v) ? "debts-owe" : /^owed-/.test(v) ? "debts-due" : /^note-/.test(v) ? "notes" : /^chi-/.test(v) ? "charity-in" : /^cho-/.test(v) ? "charity-out" : /^sav-/.test(v) ? "save-monthly" : "home";
+    var dm = /^i\/(\w+)\/(\w+)$/.exec(v), dk = dm && DETAIL[dm[1]], dItem = null;
+    if (dk) { dItem = dk.list().filter(function (x) { return x.id === dm[2]; })[0]; if (!dItem) v = dk.back; }
+    if (!VIEWS[v] && !dItem) v = /^debt-/.test(v) ? "debts-owe" : /^owed-/.test(v) ? "debts-due" : /^note-/.test(v) ? "notes" : /^chi-/.test(v) ? "charity-in" : /^cho-/.test(v) ? "charity-out" : /^sav-/.test(v) ? "save-monthly" : "home";
     if (v !== "home" && (!secLoaded || !isUnlocked())) v = "home";
     var changed = v !== current;
     if (changed) secEditing = "";
@@ -2214,7 +2272,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     if (v === "home") renderGate();
     else {
       totalFns = {};
-      $("view").replaceChildren.apply($("view"), [].concat(VIEWS[v]()).filter(Boolean));
+      $("view").replaceChildren.apply($("view"), [].concat(dItem ? dk.render(dItem) : VIEWS[v]()).filter(Boolean));
       refreshTotals();
     }
     if (changed) window.scrollTo(0, 0);
