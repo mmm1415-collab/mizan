@@ -1050,7 +1050,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 59" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 60" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1467,7 +1467,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           var it = { id: uid(), name: "" }; list.push(it); save(path); go("sav-" + it.id);
           setTimeout(function () { var n = $("svn-" + it.id); if (n) n.focus(); }, 0);
         } }),
-        totalRow("إجمالي الإيداعات", "sdi"), totalRow("إيداعات هذا الشهر", "sdq"), totalRow("النسبة من الدخل", "sv")),
+        totalRow("إجمالي الإيداعات", "sdi"), totalRow("إيداعات هذا الشهر", "sdq"), totalRow("الرصيد الحالي", "sdb"), totalRow("النسبة من الدخل", "sv")),
       copyPrevBtn("saving")];
   };
 
