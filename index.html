@@ -1021,7 +1021,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 54" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 55" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1368,54 +1368,64 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("p", { class: "hint", text: "ادخار الشهر يُحسب من أقساط «بيانات الادخار»." })];
   };
 
+  /* savings: a short list of items, each opening its own page; totals cover every stored month */
+  function saveMonthsReady(view, head) {
+    var missing = knownMonths().filter(function (k) { return !loadedMonths[k] && !S.months[k]; });
+    if (!missing.length) return null;
+    Promise.all(missing.map(loadMonth)).then(function () { if (current === view) render(); });
+    return [head, el("div", { class: "card" }, el("p", { class: "empty", text: "جارٍ حساب الأرصدة…" }))];
+  }
+  function storedMonths() { return Object.keys(S.months).filter(function (k) { return /^\d{4}-\d{2}$/.test(k); }).map(function (k) { return S.months[k]; }); }
+  function saveIn(id) { return sum(storedMonths(), function (x) { return savedOf(x, id); }); }
+  function saveOut(id) { return sum(storedMonths(), function (x) { return sum((x.withdrawals || []).filter(function (w) { return w.from === id; }), amt); }); }
+  function registerSaveViews() { saveItems().forEach(function (it) { VIEWS["sav-" + it.id] = function () { return saveDetail(it); }; }); }
+
   VIEWS["save-monthly"] = function () {
-    var head = header("بيانات الادخار", "savings", "الادخار"), keys = knownMonths();
-    var missing = keys.filter(function (k) { return !loadedMonths[k] && !S.months[k]; });
-    if (missing.length) {
-      Promise.all(missing.map(loadMonth)).then(function () { if (current === "save-monthly") render(); });
-      return [head, el("div", { class: "card" }, el("p", { class: "empty", text: "جارٍ حساب الأرصدة…" }))];
-    }
-    var m = monthDoc(), mpath = "months/" + S.month, path = "settings/savings", list = saveItems();
-    /* every month's instalments into an item, less what was withdrawn from it */
-    function stored() { return Object.keys(S.months).filter(function (k) { return /^\d{4}-\d{2}$/.test(k); }).map(function (k) { return S.months[k]; }); }
-    function itemIn(id) { return sum(stored(), function (x) { return savedOf(x, id); }); }
-    function itemOut(id) { return sum(stored(), function (x) { return sum((x.withdrawals || []).filter(function (w) { return w.from === id; }), amt); }); }
-    function allIn() { return sum(list, function (it) { return itemIn(it.id); }); }
-    function allOut() { return sum(list, function (it) { return itemOut(it.id); }); }
-    list.forEach(function (it) {
-      totalFns["sdn-" + it.id] = function () { return it.name || "بلا اسم"; };
-      totalFns["sdi-" + it.id] = function () { return fmtAmt.format(itemIn(it.id)); };
-      totalFns["sdq-" + it.id] = function () { return fmtAmt.format(savedOf(m, it.id)); };
-      totalFns["sdb-" + it.id] = function () { return fmtAmt.format(itemIn(it.id) - itemOut(it.id)); };
-    });
-    totalFns.sdi = function () { return fmtAmt.format(allIn()); };
-    totalFns.sdq = function () { return fmtAmt.format(sum(list, function (it) { return savedOf(m, it.id); })); };
-    totalFns.sdb = function () { return fmtAmt.format(allIn() - allOut()); };
-    function cell(key) { return el("td", { class: "num", "data-total": key }); }
-    var table = el("div", { class: "card" },
-      el("h3", { text: "بيانات الادخار" }),
-      list.length ? el("div", { class: "ctable-wrap" }, el("table", { class: "ctable" },
-        el("thead", null, el("tr", null, el("th", { text: "الاسم" }), el("th", { text: "إجمالي الادخار" }), el("th", { text: "القسط" }), el("th", { text: "الرصيد الحالي" }))),
-        el("tbody", null, list.map(function (it) { return el("tr", null, el("td", { "data-total": "sdn-" + it.id }), cell("sdi-" + it.id), cell("sdq-" + it.id), cell("sdb-" + it.id)); })),
-        el("tfoot", null, el("tr", null, el("td", { text: "المجموع" }), cell("sdi"), cell("sdq"), cell("sdb"))))) : null,
-      el("p", { class: "hint", text: "إجمالي الادخار: كل ما دخل على البند من أقساط في جميع الأشهر. القسط: مبلغ هذا الشهر. الرصيد الحالي: الإجمالي بعد خصم السحوبات." }));
+    var head = header("بيانات الادخار", "savings", "الادخار");
+    var wait = saveMonthsReady("save-monthly", head); if (wait) return wait;
+    var m = monthDoc(), path = "settings/savings", list = saveItems();
+    function allIn() { return sum(list, function (it) { return saveIn(it.id); }); }
+    totalFns.sdi = function () { return money(allIn()); };
+    totalFns.sdq = function () { return money(sum(list, function (it) { return savedOf(m, it.id); })); };
+    totalFns.sdb = function () { return money(allIn() - sum(list, function (it) { return saveOut(it.id); })); };
     totalFns.sv = function () { var t = totals(); return t.income ? fmtPct.format(t.saving / t.income) + " من الدخل" : "أدخل دخل الشهر لحساب النسبة"; };
-    totalFns.svMonth = function () { return money(totals().saving); };
-    return [head, monthBar(), table,
+    return [head, monthBar(),
+      el("p", { class: "hint", text: "اضغط على أي بند ادخار لعرض تفاصيله وتسجيل قسط الشهر." }),
       el("div", { class: "card" },
-        el("h3", { text: "أقساط هذا الشهر" }),
-        el("div", { class: "save-head" + (list.length > 1 && !S.readOnly ? " grip-on" : "") }, list.length > 1 && !S.readOnly ? el("span") : null, el("span", { text: "الرقم" }), el("span", { text: "الاسم" }), el("span", { text: "القسط" })),
-        list.length ? sortable(list, path, list.map(function (it, i) {
-          return el("div", { class: "row save-row" },
-            el("span", { class: "save-no num", text: fmt.format(i + 1) }),
-            textInput("svn-" + it.id, it.name, function (v) { it.name = v; save(path); }, "اسم الادخار", "مثال: صندوق الطوارئ"),
-            amountInput("sva-" + it.id, savedOf(m, it.id), function (v) { setSaved(m, it.id, v); save(mpath); }, "مبلغ " + (it.name || "الادخار") + " هذا الشهر"),
-            delBtn(it.name, remover(list, i, path)));
+        list.length ? sortable(list, path, list.map(function (it) {
+          var q = savedOf(m, it.id);
+          return el("div", { class: "debt-row" },
+            el("a", { class: "debt-link", href: "#sav-" + it.id },
+              el("span", { class: "debt-party" }, el("b", { text: it.name || "بلا اسم" }), el("small", { text: "قسط الشهر: " + money(q) })),
+              el("span", { class: "debt-left num" }, el("small", { text: "الرصيد الحالي" }), money(saveIn(it.id) - saveOut(it.id))),
+              svg(ICON_BACK.replace('M9 6l6 6-6 6', 'M15 6l-6 6 6 6'))));
         })) : el("p", { class: "empty", text: "لا توجد بنود ادخار." }),
-        (function () { var btn = addBtn("إضافة عنصر ادخار", list, function () { return { name: "" }; }, path, "svn-"); if (btn) btn.classList.add("add-wide"); return btn; })(),
-        totalRow("ادخار هذا الشهر", "svMonth"), totalRow("النسبة من الدخل", "sv")),
+        S.readOnly ? null : el("button", { class: "add", type: "button", text: "+ إضافة عنصر ادخار", onclick: function () {
+          var it = { id: uid(), name: "" }; list.push(it); save(path); go("sav-" + it.id);
+          setTimeout(function () { var n = $("svn-" + it.id); if (n) n.focus(); }, 0);
+        } }),
+        totalRow("إجمالي الادخار", "sdi"), totalRow("أقساط هذا الشهر", "sdq"), totalRow("الرصيد الحالي", "sdb"), totalRow("النسبة من الدخل", "sv")),
       copyPrevBtn("saving")];
   };
+
+  function saveDetail(it) {
+    var head = header(it.name || "بند ادخار", "save-monthly", "بيانات الادخار");
+    var wait = saveMonthsReady("sav-" + it.id, head); if (wait) return wait;
+    var m = monthDoc(), mpath = "months/" + S.month, path = "settings/savings", list = saveItems();
+    totalFns.sdIn = function () { return money(saveIn(it.id)); };
+    totalFns.sdOut = function () { return money(saveOut(it.id)); };
+    totalFns.sdBal = function () { return money(saveIn(it.id) - saveOut(it.id)); };
+    return [head, monthBar(),
+      el("div", { class: "card" },
+        el("div", { class: "item" },
+          el("div", { class: "item-head" },
+            el("label", { class: "why" }, "اسم الادخار", textInput("svn-" + it.id, it.name, function (v) { it.name = v; save(path); }, "اسم الادخار", "مثال: صندوق الطوارئ")),
+            delBtn(it.name, function () { list.splice(list.indexOf(it), 1); save(path); go("save-monthly"); })),
+          el("div", { class: "subform" },
+            el("label", null, "القسط في " + monthName(S.month, true), amountInput("sva-" + it.id, savedOf(m, it.id), function (v) { setSaved(m, it.id, v); save(mpath); }, "قسط " + (it.name || "الادخار") + " هذا الشهر")))),
+        totalRow("إجمالي الادخار", "sdIn"), totalRow("السحوبات منه", "sdOut"), totalRow("الرصيد الحالي", "sdBal")),
+      el("p", { class: "hint", text: "إجمالي الادخار: كل ما دخل على هذا البند من أقساط في جميع الأشهر. الرصيد الحالي: الإجمالي بعد خصم السحوبات. غيّر الشهر من الأعلى لتسجيل قسط شهر آخر." })];
+  }
 
   VIEWS["save-withdraw"] = function () {
     var m = monthDoc(), path = "months/" + S.month, items = saveItems();
@@ -2169,8 +2179,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   }
   function render() {
     var v = location.hash.slice(1);
-    registerCustomViews(); registerDebtViews(); registerNoteViews(); registerCharityViews();
-    if (!VIEWS[v]) v = /^debt-/.test(v) ? "debts-owe" : /^owed-/.test(v) ? "debts-due" : /^note-/.test(v) ? "notes" : /^chi-/.test(v) ? "charity-in" : /^cho-/.test(v) ? "charity-out" : "home";
+    registerCustomViews(); registerDebtViews(); registerNoteViews(); registerCharityViews(); registerSaveViews();
+    if (!VIEWS[v]) v = /^debt-/.test(v) ? "debts-owe" : /^owed-/.test(v) ? "debts-due" : /^note-/.test(v) ? "notes" : /^chi-/.test(v) ? "charity-in" : /^cho-/.test(v) ? "charity-out" : /^sav-/.test(v) ? "save-monthly" : "home";
     if (v !== "home" && (!secLoaded || !isUnlocked())) v = "home";
     var changed = v !== current;
     if (changed) secEditing = "";
