@@ -673,15 +673,35 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   function saveItems() { if (!S.savings.items) S.savings.items = clone(DEFAULTS.savings.items); return S.savings.items; }
   function savedOf(m, id) { return m.saved && id in m.saved ? +m.saved[id] || 0 : id === "s1" ? +m.savingDeposit || 0 : 0; }
   function setSaved(m, id, v) { if (!m.saved) { m.saved = { s1: +m.savingDeposit || 0 }; m.savingDeposit = 0; } m.saved[id] = v; }
-  function withdrawTotal(m) { return sum(m.withdrawals || [], amt); }
+  /* expenses whose deduction source is savings count as withdrawals of that month (read-only lines; edited from the expense) */
+  function expWithdrawals(m) {
+    var out = [], act = m.actual || {};
+    function add(it, v, kind) { if (it.src === "saving" && (+v || 0)) out.push({ id: it.id, name: it.name, from: it.saveFrom || "", amount: +v, kind: kind }); }
+    if (secOn("actual")) S.estimates.fixed.forEach(function (it) { add(it, act[it.id], "act"); });
+    customSecs().filter(function (c) { return secOn(c.id); }).forEach(function (c) { (c.items || []).forEach(function (it) { add(it, act[it.id], "cs" + c.id); }); });
+    if (secOn("unscheduled")) (m.unscheduled || []).forEach(function (it) { add(it, it.amount, "uns"); });
+    return out;
+  }
+  function allWithdrawals(m) { return (m.withdrawals || []).concat(expWithdrawals(m)); }
+  function withdrawTotal(m) { return sum(allWithdrawals(m), amt); }
   /* where a payment is deducted from: the salary or the extra income (stored as "pension" from the first version) */
+  /* expenses may also be paid from savings or investments (ext); debts and commitments only from income */
   var SRC_OPTS = [["", "الجهة"], ["salary", "من الراتب"], ["pension", "من الدخل الإضافي"]];
-  var SRC_NAME = { salary: "الراتب", pension: "الدخل الإضافي", "": "غير محددة" };
-  function srcSelect(id, it, path) {
-    return el("select", { id: id, class: "src-sel", "aria-label": "جهة الاستقطاع", disabled: S.readOnly ? "" : null, onchange: function (e) { it.src = e.target.value; save(path); } },
-      SRC_OPTS.map(function (o) { var n = el("option", { value: o[0], text: o[1] }); if ((it.src || "") === o[0]) n.selected = true; return n; }));
+  var SRC_EXT = [["saving", "من الادخار"], ["invest", "من الاستثمار"]];
+  var SRC_NAME = { salary: "الراتب", pension: "الدخل الإضافي", saving: "الادخار", invest: "الاستثمار", "": "غير محددة" };
+  function srcSelect(id, it, path, ext) {
+    return el("select", { id: id, class: "src-sel", "aria-label": "جهة الاستقطاع", disabled: S.readOnly ? "" : null, onchange: function (e) { it.src = e.target.value; save(path); if (ext) render(); } },
+      (ext ? SRC_OPTS.concat(SRC_EXT) : SRC_OPTS).map(function (o) { var n = el("option", { value: o[0], text: o[1] }); if ((it.src || "") === o[0]) n.selected = true; return n; }));
   }
   /* an income source is the salary or extra income; unset ones are guessed from the name */
+  /* which savings item an expense paid from savings is withdrawn from */
+  function saveFromField(id, it, path) {
+    if (it.src !== "saving") return null;
+    var items = saveItems();
+    if (items.length && !it.saveFrom) { it.saveFrom = items[0].id; save(path); }
+    return el("label", null, "من بند الادخار", el("select", { id: id, disabled: S.readOnly ? "" : null, onchange: function (e) { it.saveFrom = e.target.value; save(path); } },
+      [el("option", { value: "", text: "— من أي ادخار؟ —" })].concat(items.map(function (s, n) { var o = el("option", { value: s.id, text: fmt.format(n + 1) + ". " + (s.name || "بلا اسم") }); if (s.id === it.saveFrom) o.selected = true; return o; }))));
+  }
   function incomeSrc(it) { return it.src || (/راتب/.test(it.name || "") ? "salary" : "pension"); }
   function incomeSrcSelect(id, it, path) {
     return el("select", { id: id, class: "src-sel", "aria-label": "نوع الدخل", disabled: S.readOnly ? "" : null, onchange: function (e) { it.src = e.target.value; save(path); } },
@@ -744,9 +764,15 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     };
     t.custom = t.customAct + t.customExp;
     t.spent = t.actFixed + t.actVar + t.unsched + t.custom + t.debts;
-    t.left = t.income - t.spent - t.saving;
+    var r = srcTotals(key);
+    t.fromSave = r.saving ? r.saving.exp : 0;
+    t.fromInv = r.invest ? r.invest.exp : 0;
+    /* expenses paid from savings or investments do not come out of this month's income */
+    t.left = t.income - (t.spent - t.fromSave - t.fromInv) - t.saving;
     return t;
   }
+  /* expenses deducted from investments in every stored month */
+  function invSpentAll() { return sum(Object.keys(S.months).filter(function (k) { return /^\d{4}-\d{2}$/.test(k); }), function (k) { return totals(k).fromInv; }); }
   /* ---------- shared view pieces ---------- */
   function header(title, backTo, backLabel) {
     return el("div", { class: "inside-head" },
@@ -1050,7 +1076,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 60" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 61" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1186,7 +1212,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       return detailPage({ it: it, list: o.list(), path: o.itemsPath, back: view, backLabel: o.title(), title: it.name, month: true,
         nameLabel: "اسم البند", name: textInput("an-" + it.id, it.name, function (v) { it.name = v; save(o.itemsPath); }, "اسم البند", "اسم البند"),
         fields: [el("label", null, "المبلغ في " + monthName(S.month, true), amountInput("aa-" + it.id, m.actual[it.id], function (v) { m.actual[it.id] = v; save(path); }, "مصروف " + it.name)),
-          el("label", null, "جهة الاستقطاع", srcSelect("src-" + it.id, it, o.itemsPath))],
+          el("label", null, "جهة الاستقطاع", srcSelect("src-" + it.id, it, o.itemsPath, true)), saveFromField("sf-" + it.id, it, o.itemsPath)].filter(Boolean),
         after: [el("p", { class: "hint", text: "الاسم وجهة الاستقطاع ثابتان لكل الأشهر، والمبلغ لهذا الشهر فقط. غيّر الشهر من الأعلى لتسجيل مبلغ شهر آخر." })] });
     } };
   }
@@ -1219,7 +1245,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       nameLabel: "وصف المصروف", name: textInput("un-" + it.id, it.name, function (v) { it.name = v; save(path); }, "وصف المصروف", "مثال: تغيير إطارات السيارة"),
       fields: [el("label", null, "التصنيف", select("uc-" + it.id, UNSCHED_CATS, it.category, function (v) { it.category = v; save(path); }, "التصنيف")),
         el("label", null, "المبلغ", amountInput("ua-" + it.id, it.amount, function (v) { it.amount = v; save(path); })),
-        el("label", null, "جهة الاستقطاع", srcSelect("us-" + it.id, it, path))] });
+        el("label", null, "جهة الاستقطاع", srcSelect("us-" + it.id, it, path, true)), saveFromField("usf-" + it.id, it, path)].filter(Boolean) });
   } };
 
   /* ---------- summaries ---------- */
@@ -1440,7 +1466,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   function storedMonths() { return Object.keys(S.months).filter(function (k) { return /^\d{4}-\d{2}$/.test(k); }).map(function (k) { return S.months[k]; }); }
   function saveIn(id) { return sum(storedMonths(), function (x) { return savedOf(x, id); }); }
   function saveBase(it) { return +it.base || 0; }
-  function saveOut(id) { return sum(storedMonths(), function (x) { return sum((x.withdrawals || []).filter(function (w) { return w.from === id; }), amt); }); }
+  function saveOut(id) { return sum(storedMonths(), function (x) { return sum(allWithdrawals(x).filter(function (w) { return w.from === id; }), amt); }); }
   function registerSaveViews() { saveItems().forEach(function (it) { VIEWS["sav-" + it.id] = function () { return saveDetail(it); }; }); }
 
   VIEWS["save-monthly"] = function () {
@@ -1502,7 +1528,11 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         list.length ? sortable(list, path, list.map(function (w) {
           var from = items.filter(function (it) { return it.id === w.from; })[0];
           return lineRow("wd", w.id, w.name, from ? "من " + (from.name || "بلا اسم") : "", "المسحوب", money(+w.amount || 0));
-        })) : el("p", { class: "empty", text: "لا توجد سحوبات في هذا الشهر." }),
+        })) : (expWithdrawals(m).length ? null : el("p", { class: "empty", text: "لا توجد سحوبات في هذا الشهر." })),
+        expWithdrawals(m).map(function (w) {
+          var from = items.filter(function (it) { return it.id === w.from; })[0];
+          return lineRow(w.kind, w.id, w.name, "مصروف" + (from ? " · من " + (from.name || "بلا اسم") : ""), "المسحوب", money(w.amount));
+        }),
         addLine("إضافة سحب", list, function () { return { name: "", from: items[0] ? items[0].id : "", amount: 0 }; }, path, "wd", "wn-"),
         totalRow("مجموع سحوبات الشهر", "wd"))];
   };
@@ -1536,8 +1566,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var list = saveItems(), year = realMonth().slice(0, 4);
     var months = keys.filter(function (k) { return S.months[k]; }).map(function (k) { var m = S.months[k]; return { k: k, v: sum(list, function (it) { return savedOf(m, it.id); }), w: withdrawTotal(m), m: m }; }).filter(function (r) { return r.v || r.w; });
     var base = sum(list, saveBase), all = sum(months, function (r) { return r.v; }), out = sum(months, function (r) { return r.w; }), thisYear = sum(months.filter(function (r) { return r.k.slice(0, 4) === year; }), function (r) { return r.v; });
-    function itemOut(id) { return sum(months, function (r) { return sum((r.m.withdrawals || []).filter(function (w) { return w.from === id; }), amt); }); }
-    var t = totals();
+    function itemOut(id) { return sum(months, function (r) { return sum(allWithdrawals(r.m).filter(function (w) { return w.from === id; }), amt); }); }
+    var t = totals(), bal = base + all - out, loose = sum(months, function (r) { return sum(expWithdrawals(r.m).filter(function (w) { return !w.from; }), amt); });
     return [head, monthBar(),
       el("div", { class: "grid" },
         tile("save-base", "المبلغ التأسيسي", "ما كان مدخرًا في كل بند قبل البدء", money(base)),
@@ -1547,7 +1577,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         el("div", { class: "kpi" }, el("span", { text: "المبلغ التأسيسي" }), el("b", { class: "num", text: money(base) })),
         el("div", { class: "kpi" }, el("span", { text: "الإيداعات" }), el("b", { class: "num", text: money(all) })),
         el("div", { class: "kpi" }, el("span", { text: "السحوبات" }), el("b", { class: "num neg", text: money(out) })),
-        el("div", { class: "kpi" }, el("span", { text: "الرصيد الحالي" }), el("b", { class: "num " + (base + all - out < 0 ? "neg" : "pos"), text: money(base + all - out) }))),
+        el("div", { class: "kpi" }, el("span", { text: "الرصيد الحالي" }), el("b", { class: "num " + (bal < 0 ? "neg" : "pos"), text: money(bal) }))),
       el("p", { class: "hint", text: "ادخرت هذه السنة " + money(thisYear) + "." }),
       el("div", { class: "card" },
         el("h3", { text: "حسب بند الادخار" }),
@@ -1556,9 +1586,9 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           el("tbody", null, list.map(function (it, i) {
             var inn = saveBase(it) + sum(months, function (r) { return savedOf(r.m, it.id); }), o = itemOut(it.id);
             return el("tr", null, el("td", { class: "num", text: fmt.format(i + 1) }), el("td", { text: it.name || "بلا اسم" }), el("td", { class: "num", text: fmtAmt.format(inn) }), el("td", { class: "num", text: fmtAmt.format(o) }), el("td", { class: "num", text: fmtAmt.format(inn - o) }));
-          })),
-          el("tfoot", null, el("tr", null, el("td"), el("td", { text: "المجموع" }), el("td", { class: "num", text: fmtAmt.format(base + all) }), el("td", { class: "num", text: fmtAmt.format(out) }), el("td", { class: "num", text: fmtAmt.format(base + all - out) }))))),
-        el("p", { class: "hint", text: "المبالغ بالريال." })),
+          }).concat(loose ? [el("tr", null, el("td"), el("td", { text: "سحوبات بلا بند" }), el("td", { class: "num", text: "—" }), el("td", { class: "num", text: fmtAmt.format(loose) }), el("td", { class: "num neg", text: fmtAmt.format(-loose) }))] : [])),
+          el("tfoot", null, el("tr", null, el("td"), el("td", { text: "المجموع" }), el("td", { class: "num", text: fmtAmt.format(base + all) }), el("td", { class: "num", text: fmtAmt.format(out) }), el("td", { class: "num", text: fmtAmt.format(bal) }))))),
+        el("p", { class: "hint", text: "المبالغ بالريال. المصروفات التي جهة استقطاعها «من الادخار» تُحسب ضمن السحوبات." })),
       el("div", { class: "card" },
         el("h3", { text: "حسب الشهر" }),
         months.length ? el("div", { class: "ctable-wrap" }, el("table", { class: "ctable" },
@@ -1743,6 +1773,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     if (t.income && t.unsched / t.income > 0.1) tips.push("المصروفات غير المجدولة تجاوزت 10% من الدخل. صندوق طوارئ يغطي ثلاثة أشهر يخفف أثرها.");
     if (t.income && t.debts / t.income > 0.33) tips.push("أقساط الديون أكثر من ثلث الدخل. تجنّب أي التزام جديد حتى تنخفض.");
     if (t.left < 0) tips.push("المصروفات والادخار تجاوزت الدخل بـ " + money(-t.left) + " هذا الشهر.");
+    if (t.fromSave) tips.push("استُقطع من الادخار " + money(t.fromSave) + " لمصروفات هذا الشهر، فلم يُحسب من الدخل وسُجّل ضمن سحوبات الادخار.");
+    if (t.fromInv) tips.push("استُقطع من الاستثمار " + money(t.fromInv) + " لمصروفات هذا الشهر، فلم يُحسب من الدخل.");
     return [header("ملخص الشهر", "summary", "الملخص"), monthBar(),
       el("div", { class: "kpis" },
         el("div", { class: "kpi" }, el("span", { text: "الدخل" }), el("b", { class: "num", text: money(t.income) })),
@@ -1766,7 +1798,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           el("div", { class: "total" }, el("span", { text: "الصافي" }), el("b", { class: "num " + (net < 0 ? "neg" : net > 0 ? "pos" : ""), "data-total": "ovNet" })));
       })(),
       (function () {
-        var r = srcTotals(), keys = ["salary", "pension", ""].filter(function (k) { return r[k] && (r[k].exp || r[k].debt || r[k].cm); });
+        var r = srcTotals(), keys = ["salary", "pension", "saving", "invest", ""].filter(function (k) { return r[k] && (r[k].exp || r[k].debt || r[k].cm); });
         if (!keys.length) return null;
         var col = function (k, f) { return el("td", { class: "num", text: fmtAmt.format(f(r[k])) }); };
         return el("div", { class: "card" }, el("h3", { text: "حسب جهة الاستقطاع" }),
@@ -1921,10 +1953,13 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var inv = sum(list, function (x) { return x.invested; }), cur = sum(list, function (x) { return x.current; }), d = cur - inv;
     var byType = INVEST_TYPES.map(function (ty) { return { n: ty, v: sum(list.filter(function (x) { return (x.type || INVEST_TYPES[0]) === ty; }), function (x) { return x.current; }) }; });
     var perf = list.filter(function (x) { return +x.invested; }).map(function (x) { return { n: x.name || x.type, r: ((+x.current || 0) - x.invested) / x.invested }; }).sort(function (a, b) { return b.r - a.r; });
+    var invOut = invSpentAll(), invM = totals().fromInv;
     return [header("ملخص الاستثمار", "invest", "الاستثمار"),
       kpiRow([["المستثمر", money(inv)], ["القيمة الحالية", money(cur)], [d < 0 ? "الخسارة" : "الربح", money(Math.abs(d)) + (inv ? " (" + fmtPct.format(Math.abs(d) / inv) + ")" : ""), d < 0 ? "neg" : "pos"]]),
       el("div", { class: "card" }, el("h3", { text: "التوزيع حسب النوع" }), shareRows(byType, cur)),
       el("div", { class: "card" }, el("h3", { text: "تحليل" }), noteList([
+        invM ? "استُقطع من الاستثمار " + money(invM) + " لمصروفات " + monthName(S.month, true) + "." : null,
+        invOut ? "مجموع ما استُقطع من الاستثمار للمصروفات في كل الأشهر " + money(invOut) + "؛ حدّث «القيمة الحالية» في المحفظة إذا بعت منها لتغطيته." : null,
         perf[0] ? "الأفضل أداءً «" + perf[0].n + "» بعائد " + fmtPct.format(perf[0].r) + "." : null,
         perf.length > 1 && perf[perf.length - 1].r < 0 ? "الأضعف «" + perf[perf.length - 1].n + "» بخسارة " + fmtPct.format(-perf[perf.length - 1].r) + "." : null,
         cur && Math.max.apply(null, byType.map(function (b) { return b.v; })) / cur > 0.6 ? "أكثر من 60% من محفظتك في نوع واحد؛ التنويع يقلل المخاطر." : null
