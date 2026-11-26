@@ -67,6 +67,19 @@ button { cursor: pointer; }
 .ph .fig { font-family: var(--font-display); font-size: .92rem; color: var(--gold); }
 .ph .chev { width: 18px; height: 18px; color: var(--muted); transition: transform .2s; flex: none; }
 .panel.open .ph .chev { transform: rotate(-90deg); }
+/* every window has its own tint; the parts inside it alternate shades of that tint */
+.panel[data-p="income"] { --tint: 92,194,154; }
+.panel[data-p="expenses"] { --tint: 229,130,114; }
+.panel[data-p="expensesP"] { --tint: 227,181,82; }
+.panel[data-p="debts"] { --tint: 186,104,200; }
+.panel[data-p="savings"] { --tint: 90,170,230; }
+.panel[data-p="charity"] { --tint: 70,200,200; }
+.panel[data-p="settings"] { --tint: 150,160,185; }
+.panel[data-p] { background: linear-gradient(rgba(var(--tint),.10), rgba(var(--tint),.10)), var(--panel); border-color: rgba(var(--tint),.45); }
+.panel[data-p] .ph h2 { color: rgb(var(--tint)); }
+.grp { display: grid; gap: 6px; padding: 8px; border-radius: 10px; background: rgba(var(--tint),.10); border: 1px solid rgba(var(--tint),.22); }
+.grp:nth-of-type(even) { background: rgba(0,0,0,.20); }
+.panel[data-p] .sub { color: rgb(var(--tint)); }
 .pb { padding: 0 12px 12px; display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; }
 .sub { display: flex; justify-content: space-between; align-items: baseline; color: var(--gold); font-family: var(--font-display); font-size: .8rem; margin-top: 6px; }
 .sub:first-child { margin-top: 0; }
@@ -127,7 +140,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 <script>
 (function () {
   "use strict";
-  var APP_VERSION = 73;
+  var APP_VERSION = 74;
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { maximumFractionDigits: 2 });
   var fmtAmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -365,10 +378,19 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
   var CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
   function panel(id, title, figKey, body) {
     var open = !!OPEN[id];
-    return el("section", { class: "panel" + (open ? " open" : "") },
+    return el("section", { class: "panel" + (open ? " open" : ""), "data-p": id },
       el("button", { class: "ph", type: "button", "aria-expanded": open ? "true" : "false", onclick: function () { toggle(id); } },
         el("h2", { text: title }), figKey ? el("span", { class: "fig num", "data-f": figKey }) : null, svg(CHEV)),
-      open ? el("div", { class: "pb" }, body()) : null);
+      open ? group(el("div", { class: "pb" }, body())) : null);
+  }
+  /* each part of a window (from one sub-heading to the next) sits on its own background */
+  function group(pb) {
+    var kids = [].slice.call(pb.children), box = null;
+    kids.forEach(function (n) {
+      if (n.classList.contains("sub")) { box = el("div", { class: "grp" }); pb.insertBefore(box, n); }
+      if (box) box.append(n);
+    });
+    return pb;
   }
   /* figures that change while typing are refreshed in place, so the field keeps focus */
   var FIGS = {};
