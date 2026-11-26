@@ -35,9 +35,9 @@ button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 
 /* top: title and month */
-.top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.top { display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
 .top h1 { margin: 0; font-family: var(--font-display); font-size: 1.15rem; color: var(--gold); letter-spacing: .5px; }
-.month { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.month { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
 .month b { font-family: var(--font-display); font-weight: 600; font-size: .98rem; min-width: 8.5em; text-align: center; }
 .icon-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel-2); display: inline-grid; place-items: center; padding: 0; color: var(--gold); flex: none; }
 .icon-btn svg { width: 18px; height: 18px; }
@@ -112,9 +112,9 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
   <div id="app" hidden>
     <header class="top">
       <h1>ميزان</h1>
-      <div class="month" id="month"></div>
     </header>
     <div class="sum" id="sum"></div>
+    <div class="month" id="month"></div>
     <div class="panels" id="panels"></div>
     <p class="ver" id="ver"></p>
   </div>
@@ -122,7 +122,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 <script>
 (function () {
   "use strict";
-  var APP_VERSION = 66;
+  var APP_VERSION = 67;
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { maximumFractionDigits: 2 });
   var fmtAmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -375,7 +375,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
   }
 
   function monthBar() {
-    function shift(d) { S.month = addMonths(S.month, d); render(); window.scrollTo(0, 0); }
+    function shift(d) { S.month = addMonths(S.month, d); render(); }
     var p = S.month.split("-").map(Number);
     return [
       el("button", { class: "icon-btn", type: "button", "aria-label": "الشهر السابق", onclick: function () { shift(-1); } }, svg(I_PREV)),
