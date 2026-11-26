@@ -67,31 +67,25 @@ button { cursor: pointer; }
 .ph .fig { font-family: var(--font-display); font-size: .92rem; color: var(--gold); }
 .ph .chev { width: 18px; height: 18px; color: var(--muted); transition: transform .2s; flex: none; }
 .panel.open .ph .chev { transform: rotate(-90deg); }
-/* every window has its own tint; the parts inside it alternate shades of that tint */
-.panel[data-p="income"] { --tint: 92,194,154; }
-.panel[data-p="expenses"] { --tint: 229,130,114; }
-.panel[data-p="expensesP"] { --tint: 227,181,82; }
-.panel[data-p="debts"] { --tint: 186,104,200; }
-.panel[data-p="savings"] { --tint: 90,170,230; }
-.panel[data-p="charity"] { --tint: 70,200,200; }
-.panel[data-p="settings"] { --tint: 150,160,185; }
-.panel[data-p] { background: linear-gradient(rgba(var(--tint),.13), rgba(var(--tint),.13)), var(--panel); border: 1px solid rgba(var(--tint),.6); border-inline-start: 6px solid rgb(var(--tint)); }
-.panel[data-p] .ph { background: rgba(var(--tint),.22); }
-.panel[data-p] .ph h2 { color: rgb(var(--tint)); }
-.panel[data-p] .pb { border-top-color: rgba(var(--tint),.6); gap: 10px; }
-.grp { display: grid; gap: 6px; padding: 0 10px 10px; border-radius: 10px; background: rgba(var(--tint),.12); border: 1px solid rgba(var(--tint),.45); border-inline-start: 4px solid rgba(var(--tint),.9); overflow: hidden; }
-/* each part has its own colour, in this order: green, blue, brown, red, purple, teal */
-.grp[data-g="0"] { --tint: 76,175,110; }
-.grp[data-g="1"] { --tint: 70,140,230; }
-.grp[data-g="2"] { --tint: 170,115,70; }
-.grp[data-g="3"] { --tint: 215,80,80; }
-.grp[data-g="4"] { --tint: 160,100,210; }
-.grp[data-g="5"] { --tint: 40,170,170; }
-.grp { background: linear-gradient(rgba(var(--tint),.20), rgba(var(--tint),.20)), var(--bg-deep); }
-.grp > .sub:first-child { margin: 0 -10px 4px; padding: 6px 10px; background: rgba(var(--tint),.28); color: #fff; font-size: .86rem; }
-.grp > .sub:first-child span { color: rgba(255,255,255,.8); }
-.panel[data-p] .sub { color: rgb(var(--tint)); }
-.panel[data-p] .grp > .sub:first-child { color: #fff; background: rgba(var(--tint),.55); }
+/* one solid colour per main section: الميزان brown, حقوق الملكية green, المصروفات red, الديون purple, الأمانة blue, الصندوق teal */
+.panel[data-p="income"] { --tint: 46,140,87; }
+.panel[data-p="expenses"], .panel[data-p="expensesP"] { --tint: 190,64,64; }
+.panel[data-p="debts"] { --tint: 125,75,170; }
+.panel[data-p="savings"] { --tint: 40,105,190; }
+.panel[data-p="charity"] { --tint: 25,140,140; }
+.panel[data-p="settings"] { --tint: 110,120,140; }
+.panel[data-p] { background: linear-gradient(rgba(var(--tint),.38), rgba(var(--tint),.38)), var(--bg-deep); border: 2px solid rgb(var(--tint)); }
+.panel[data-p] .ph { background: rgb(var(--tint)); }
+.panel[data-p] .ph h2, .panel[data-p] .ph .fig, .panel[data-p] .ph .chev { color: #fff; }
+.panel[data-p] .pb { border-top: 0; gap: 10px; }
+.grp { display: grid; gap: 6px; padding: 0 10px 10px; border-radius: 10px; background: rgba(4,10,24,.35); border: 1px solid rgba(var(--tint),.9); overflow: hidden; }
+.grp > .sub:first-child { margin: 0 -10px 4px; padding: 6px 10px; background: rgba(var(--tint),.7); color: #fff; font-size: .86rem; }
+.grp > .sub:first-child span { color: rgba(255,255,255,.85); }
+.panel[data-p] .sub { color: #fff; }
+/* الميزان (summary and month) in brown */
+.sum, .month { --tint: 140,95,50; background: linear-gradient(rgba(var(--tint),.45), rgba(var(--tint),.45)), var(--bg-deep); border: 2px solid rgb(var(--tint)); }
+.month .icon-btn { background: rgba(0,0,0,.25); border-color: rgba(255,255,255,.3); color: #fff; }
+.kpi { background: rgba(0,0,0,.28); }
 .pb { padding: 0 12px 12px; display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; }
 .sub { display: flex; justify-content: space-between; align-items: baseline; color: var(--gold); font-family: var(--font-display); font-size: .8rem; margin-top: 6px; }
 .sub:first-child { margin-top: 0; }
@@ -397,9 +391,9 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
   }
   /* each part of a window (from one sub-heading to the next) sits on its own background */
   function group(pb) {
-    var kids = [].slice.call(pb.children), box = null, g = 0;
+    var kids = [].slice.call(pb.children), box = null;
     kids.forEach(function (n) {
-      if (n.classList.contains("sub")) { box = el("div", { class: "grp", "data-g": String(g++ % 6) }); pb.insertBefore(box, n); }
+      if (n.classList.contains("sub")) { box = el("div", { class: "grp" }); pb.insertBefore(box, n); }
       if (box) box.append(n);
     });
     return pb;
