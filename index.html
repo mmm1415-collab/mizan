@@ -36,6 +36,20 @@ button { cursor: pointer; }
 
 /* top: title and month */
 .top { display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+.back-btn { position: absolute; inset-inline-start: 0; display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.3); color: #fff; border-radius: 999px; padding: 4px 12px 4px 8px; font-family: var(--font-display); font-size: .85rem; }
+.back-btn svg { width: 16px; height: 16px; }
+.top { position: relative; min-height: 36px; }
+.tiles { grid-template-columns: 1fr 1fr; gap: 12px; }
+.tile { --tint: 120,120,120; display: grid; justify-items: center; gap: 4px; padding: 18px 8px 14px; border-radius: 16px; border: 2px solid rgba(255,255,255,.25); background: rgb(var(--tint)); color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.35); text-align: center; font: inherit; cursor: pointer; }
+.tile svg { width: 40px; height: 40px; }
+.tile b { font-family: var(--font-display); font-size: .98rem; line-height: 1.3; }
+.tile span { font-family: var(--font-display); font-weight: 600; font-size: .9rem; direction: ltr; opacity: .9; }
+.tile:active { transform: scale(.97); }
+.tile[data-p="expenses"], .tile[data-p="expensesP"] { --tint: 190,64,64; }
+.tile[data-p="debts"] { --tint: 125,75,170; }
+.tile[data-p="savings"] { --tint: 40,105,190; }
+.tile[data-p="charity"] { --tint: 25,140,140; }
+.tile[data-p="settings"] { --tint: 110,120,140; }
 .top h1 { margin: 0; font-family: var(--font-display); font-size: 1.15rem; color: var(--gold); letter-spacing: .5px; }
 .month { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 0; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
 .month b { font-family: var(--font-display); font-weight: 600; font-size: .98rem; min-width: 8.5em; text-align: center; }
@@ -140,11 +154,8 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 <div class="wrap">
   <section id="lock" class="lock" hidden></section>
   <div id="app" hidden>
-    <header class="top">
-      <h1>ميزان</h1>
-    </header>
-    <div class="sum" id="sum"></div>
-    <hr class="sep">
+    <header class="top" id="top"></header>
+    <div id="homeTop"><div class="sum" id="sum"></div><hr class="sep"></div>
     <div class="month" id="month"></div>
     <hr class="sep">
     <div class="panels" id="panels"></div>
@@ -154,7 +165,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 <script>
 (function () {
   "use strict";
-  var APP_VERSION = 77;
+  var APP_VERSION = 78;
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { maximumFractionDigits: 2 });
   var fmtAmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -390,12 +401,25 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
   var OPEN = (function () { try { return JSON.parse(localStorage.getItem("mizan-ui:open") || "{}") || {}; } catch (e) { return {}; } })();
   function toggle(id) { OPEN[id] = !OPEN[id]; try { localStorage.setItem("mizan-ui:open", JSON.stringify(OPEN)); } catch (e) {} render(); }
   var CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
+  /* the home page shows each section as a large coloured icon; tapping one opens that section's own page (#id) */
+  var ICONS = {
+    expenses: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+    expensesP: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+    debts: '<path d="M12 3v18M5 7h14"/><path d="M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/>',
+    savings: '<rect x="3" y="5" width="18" height="15" rx="2"/><circle cx="12" cy="12.5" r="3.5"/><path d="M12 9v1M7 20v1M17 20v1"/>',
+    charity: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>'
+  };
+  function curView() { var v = location.hash.slice(1); return ICONS[v] ? v : ""; }
   function panel(id, title, figKey, body) {
-    var open = !!OPEN[id];
-    return el("section", { class: "panel" + (open ? " open" : ""), "data-p": id },
-      el("button", { class: "ph", type: "button", "aria-expanded": open ? "true" : "false", onclick: function () { toggle(id); } },
-        el("h2", { text: title }), figKey ? el("span", { class: "fig num", "data-f": figKey }) : null, svg(CHEV)),
-      open ? group(el("div", { class: "pb" }, body())) : null);
+    var v = curView();
+    if (!v) return el("button", { class: "tile", type: "button", "data-p": id, onclick: function () { location.hash = id; } },
+      svg('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[id] + '</svg>'),
+      el("b", { text: title }), figKey ? el("span", { class: "num", "data-f": figKey }) : null);
+    if (v !== id) return null;
+    return el("section", { class: "panel open", "data-p": id },
+      el("div", { class: "ph" }, el("h2", { text: title }), figKey ? el("span", { class: "fig num", "data-f": figKey }) : null),
+      group(el("div", { class: "pb" }, body())));
   }
   /* each part of a window (from one sub-heading to the next) sits on its own background */
   function group(pb) {
@@ -764,13 +788,19 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     });
   }
 
+  var lastView = null;
+  window.addEventListener("hashchange", function () { render(); });
   function render() {
     memo = {};
-    var y = window.scrollY;
+    var y = curView() === lastView ? window.scrollY : 0; lastView = curView();
     $("month").replaceChildren.apply($("month"), monthBar().filter(Boolean));
-    $("sum").replaceChildren.apply($("sum"), summary().filter(Boolean));
-    var ps = [expensesPanel("salary"), expensesPanel("pension"), debtsPanel(), savingsPanel(), charityPanel(), settingsPanel()];
-    $("panels").replaceChildren.apply($("panels"), ps.reduce(function (a, p, i) { if (i) a.push(el("hr", { class: "sep" })); a.push(p); return a; }, []));
+    var v = curView();
+    $("homeTop").hidden = !!v;
+    $("top").replaceChildren.apply($("top"), v ? [el("button", { class: "back-btn", type: "button", onclick: function () { location.hash = ""; } }, svg(I_PREV), "الرئيسية"), el("h1", { text: "ميزان" })] : [el("h1", { text: "ميزان" })]);
+    if (!v) $("sum").replaceChildren.apply($("sum"), summary().filter(Boolean));
+    var ps = [expensesPanel("salary"), expensesPanel("pension"), debtsPanel(), savingsPanel(), charityPanel(), settingsPanel()].filter(Boolean);
+    $("panels").className = v ? "panels" : "panels tiles";
+    $("panels").replaceChildren.apply($("panels"), ps);
     $("ver").textContent = "الإصدار " + APP_VERSION;
     refresh();
     window.scrollTo(0, y);
