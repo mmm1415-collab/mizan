@@ -122,7 +122,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 <script>
 (function () {
   "use strict";
-  var APP_VERSION = 69;
+  var APP_VERSION = 70;
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { maximumFractionDigits: 2 });
   var fmtAmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -372,14 +372,14 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     FIGS = {
       income: money(t.income), spent: money(t.spent), saving: money(t.saving), bal: money(st.bal),
       charity: money(sum((S.charity.income || []).filter(function (x) { return !(START && x.date && x.date.slice(0, 7) < START); }), amt) - sum((S.charity.spend || []).filter(function (x) { return !(START && x.date && x.date.slice(0, 7) < START); }), amt)),
-      leftS: money(t.left.salary), leftP: money(t.left.pension),
+      leftS: money(t.left.salary), leftP: money(t.left.pension), leftA: money(t.left.salary + t.left.pension),
       exp: money(t.exp), debts: money(t.debts), auto: money(t.auto),
       over: t.over ? "المصروفات تتجاوز الدخل بـ " + money(t.over) + " ريال" : ""
     };
     document.querySelectorAll("[data-f]").forEach(function (n) { var k = n.getAttribute("data-f"); if (k in FIGS) n.textContent = FIGS[k]; });
     document.querySelectorAll("[data-bal]").forEach(function (n) { var v = saveBalance(n.getAttribute("data-bal")); n.textContent = money(v); n.classList.toggle("neg", v < 0); });
     var ov = $("over"); if (ov) ov.hidden = !t.over;
-    [["kS", t.left.salary], ["kP", t.left.pension]].forEach(function (p) { var n = $(p[0]); if (n) n.classList.toggle("neg", p[1] < 0); });
+    [["kS", t.left.salary], ["kP", t.left.pension], ["kA", t.left.salary + t.left.pension]].forEach(function (p) { var n = $(p[0]); if (n) n.classList.toggle("neg", p[1] < 0); });
   }
 
   function monthBar() {
@@ -399,9 +399,10 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
         el("div", { class: "kpi" }, el("small", { text: "الدخل" }), el("b", { class: "num", "data-f": "income" })),
         el("div", { class: "kpi" }, el("small", { text: "المصروفات والأقساط" }), el("b", { class: "num", "data-f": "spent" })),
         el("div", { class: "kpi pos" }, el("small", { text: "أمانة الشهر" }), el("b", { class: "num", "data-f": "saving" }))),
-      el("div", { class: "kpis two" },
+      el("div", { class: "kpis" },
         el("div", { class: "kpi", id: "kS" }, el("small", { text: "المتبقي من الراتب" }), el("b", { class: "num", "data-f": "leftS" })),
-        el("div", { class: "kpi", id: "kP" }, el("small", { text: "المتبقي من الدخل الإضافي" }), el("b", { class: "num", "data-f": "leftP" }))),
+        el("div", { class: "kpi", id: "kP" }, el("small", { text: "المتبقي من الدخل الإضافي" }), el("b", { class: "num", "data-f": "leftP" })),
+        el("div", { class: "kpi", id: "kA" }, el("small", { text: "المتبقي من الجميع" }), el("b", { class: "num", "data-f": "leftA" }))),
       el("div", { class: "total-save" }, el("span", { text: "مجموع الأمانة الحالي" }), el("b", { class: "num", "data-f": "bal" })),
       el("div", { class: "alert", id: "over", "data-f": "over", hidden: true }),
       reminder ? el("div", { class: "alert info" }, el("span", { text: reminder }),
