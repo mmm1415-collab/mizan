@@ -242,6 +242,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 .debt-left { display: grid; text-align: left; color: var(--gold); font-weight: 700; } .debt-left.pos { color: var(--ok); }
 .kpis.kpis-2 { grid-template-columns: 1fr 1fr; } .kpis.kpis-2 .kpi:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .auto-toggle { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; } .auto-toggle input { width: 20px; height: 20px; flex: none; accent-color: var(--gold); }
+.total.grand { font-size: 1.1rem; border-top: 2px solid var(--gold); } .total.grand span { color: var(--gold); }
 .src-items { margin-top: 10px; display: grid; gap: 6px; } .src-items .total { border-top-style: dashed; padding-top: 6px; font-family: inherit; font-size: .92rem; }
 .sum-link { color: inherit; text-decoration: none; } .sum-link:hover span, .sum-link:focus-visible span { color: var(--gold); }
 .src-row { grid-template-columns: minmax(0, 1fr) 136px 52px; grid-template-areas: "name name name" "src amt del"; }
@@ -1103,7 +1104,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 64" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 65" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1112,7 +1113,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         tile("income", "الدخل والموارد", "الراتب وأي دخل أو مورد إضافي", money(t.income)),
         tile("expenses", "المصروفات", ["actual", "unscheduled"].concat(customSecs("expenses").map(function (c) { return c.id; })).filter(secOn).map(secName).join(" · ") || "—", money(t.actFixed + t.actVar + t.unsched + t.custom)),
         tile("debts", "الديون والالتزامات", "المتبقي من الديون عليك", money(sum(S.debts.list, function (d) { return d.remaining; }))),
-        tile("savings", "الادخار", "الإيداع والسحب والرصيد", money(t.saving)),
+        tile("savings", "الادخار", "مجموع الادخار الحالي", money(saveParts("budget").bal)),
         tile("invest", "الاستثمار", "المحفظة والربح والخسارة", money(sum(S.investments.list, function (x) { return x.current; }))),
         tile("charity", "الصندوق الخيري", "الدخل · المصاريف · الملخص", money(charityBalance()))),
       notice()];
@@ -1459,9 +1460,25 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       })())];
   }
 
+  /* everything saved so far: opening amounts + all deposits (typed and automatic) − all withdrawals */
+  function saveParts(view) {
+    var missing = knownMonths().filter(function (k) { return !loadedMonths[k] && !S.months[k]; });
+    if (missing.length) Promise.all(missing.map(loadMonth)).then(function () { if (current === view) render(); });
+    var list = saveItems(), ms = storedMonths();
+    var p = { base: sum(list, saveBase), manual: sum(ms, function (m) { return sum(list, function (it) { return savedManual(m, it.id); }); }),
+      auto: autoOn() && list.length ? sum(ms, autoOf) : 0, out: sum(ms, withdrawTotal) };
+    p.bal = p.base + p.manual + p.auto - p.out;
+    return p;
+  }
   VIEWS.savings = function () {
-    var t = totals();
+    var t = totals(), sp = saveParts("savings");
     return [header("الادخار", "budget", "الميزانية"), monthBar(),
+      el("div", { class: "card" }, el("h3", { text: "مجموع الادخار الحالي" }),
+        el("div", { class: "total" }, el("span", { text: "المبلغ التأسيسي" }), el("b", { class: "num", text: money(sp.base) })),
+        el("div", { class: "total" }, el("span", { text: "الإيداعات اليدوية" }), el("b", { class: "num", text: money(sp.manual) })),
+        autoOn() ? el("div", { class: "total" }, el("span", { text: "المتبقي المُودَع تلقائيًا" }), el("b", { class: "num", text: money(sp.auto) })) : null,
+        el("div", { class: "total" }, el("span", { text: "السحوبات" }), el("b", { class: "num neg", text: money(sp.out) })),
+        el("div", { class: "total grand" }, el("span", { text: "مجموع الادخار الحالي" }), el("b", { class: "num " + (sp.bal < 0 ? "neg" : "pos"), text: money(sp.bal) }))),
       el("div", { class: "grid" },
         tile("save-total", "إجمالي الادخار", "المبلغ التأسيسي · الإيداع · السحب · الرصيد", null),
         tile("save-sum", "ملخص الادخار", "نسبة الادخار والمتوسط والتحليل", null)),
@@ -1617,7 +1634,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         el("div", { class: "kpi" }, el("span", { text: "المبلغ التأسيسي" }), el("b", { class: "num", text: money(base) })),
         el("div", { class: "kpi" }, el("span", { text: "الإيداعات" }), el("b", { class: "num", text: money(all) })),
         el("div", { class: "kpi" }, el("span", { text: "السحوبات" }), el("b", { class: "num neg", text: money(out) })),
-        el("div", { class: "kpi" }, el("span", { text: "الرصيد الحالي" }), el("b", { class: "num " + (bal < 0 ? "neg" : "pos"), text: money(bal) }))),
+        el("div", { class: "kpi" }, el("span", { text: "مجموع الادخار الحالي" }), el("b", { class: "num " + (bal < 0 ? "neg" : "pos"), text: money(bal) }))),
       el("p", { class: "hint", text: "ادخرت هذه السنة " + money(thisYear) + "." }),
       el("div", { class: "card" },
         el("h3", { text: "حسب بند الادخار" }),
