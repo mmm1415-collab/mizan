@@ -122,7 +122,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 <script>
 (function () {
   "use strict";
-  var APP_VERSION = 71;
+  var APP_VERSION = 72;
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { maximumFractionDigits: 2 });
   var fmtAmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -375,7 +375,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
       charity: money(sum((S.charity.income || []).filter(function (x) { return !(START && x.date && x.date.slice(0, 7) < START); }), amt) - sum((S.charity.spend || []).filter(function (x) { return !(START && x.date && x.date.slice(0, 7) < START); }), amt)),
       leftS: money(t.left.salary), leftP: money(t.left.pension), leftA: money(t.left.salary + t.left.pension),
       exp: money(t.exp), expS: money(t.by.salary + t.by.saving), expP: money(t.by.pension), debts: money(t.debts), auto: money(t.auto),
-      over: t.over ? "المصروفات تتجاوز الدخل بـ " + money(t.over) + " ريال" : ""
+      over: t.over ? "المصروفات تتجاوز حقوق الملكية بـ " + money(t.over) + " ريال" : ""
     };
     document.querySelectorAll("[data-f]").forEach(function (n) { var k = n.getAttribute("data-f"); if (k in FIGS) n.textContent = FIGS[k]; });
     document.querySelectorAll("[data-bal]").forEach(function (n) { var v = saveBalance(n.getAttribute("data-bal")); n.textContent = money(v); n.classList.toggle("neg", v < 0); });
@@ -397,7 +397,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     var reminder = backupDue();
     return [
       el("div", { class: "kpis" },
-        el("div", { class: "kpi" }, el("small", { text: "الدخل" }), el("b", { class: "num", "data-f": "income" })),
+        el("div", { class: "kpi" }, el("small", { text: "حقوق الملكية" }), el("b", { class: "num", "data-f": "income" })),
         el("div", { class: "kpi" }, el("small", { text: "المصروفات والأقساط" }), el("b", { class: "num", "data-f": "spent" })),
         el("div", { class: "kpi pos" }, el("small", { text: "أمانة الشهر" }), el("b", { class: "num", "data-f": "saving" }))),
       el("div", { class: "kpis" },
@@ -413,18 +413,18 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 
   function incomePanel() {
     var m = monthDoc(), path = mpath();
-    return panel("income", "الدخل", "income", function () {
+    return panel("income", "حقوق الملكية", "income", function () {
       return [
-        m.income.length ? null : el("p", { class: "empty", text: "لا يوجد دخل لهذا الشهر." }),
+        m.income.length ? null : el("p", { class: "empty", text: "لا توجد حقوق ملكية لهذا الشهر." }),
         m.income.map(function (it) {
           return el("div", { class: "row", "data-id": it.id },
-            textInput(it.name, function (v) { it.name = v; save(path); }, "اسم الدخل", "مثل: الراتب"),
-            amountInput(it.amount, function (v) { it.amount = v; save(path); }, "مبلغ " + (it.name || "الدخل")),
-            selectEl([["salary", "راتب"], ["pension", "إضافي"]], incomeSrc(it), function (v) { it.src = v; save(path); render(); }, "نوع الدخل", incomeSrc(it) === "pension" ? "extra" : ""),
+            textInput(it.name, function (v) { it.name = v; save(path); }, "اسم البند", "مثل: الراتب"),
+            amountInput(it.amount, function (v) { it.amount = v; save(path); }, "مبلغ " + (it.name || "البند")),
+            selectEl([["salary", "راتب"], ["pension", "إضافي"]], incomeSrc(it), function (v) { it.src = v; save(path); render(); }, "النوع", incomeSrc(it) === "pension" ? "extra" : ""),
             delBtn(it.name, function () { m.income.splice(m.income.indexOf(it), 1); save(path); }));
         }),
         el("div", { class: "acts" },
-          el("button", { class: "add", type: "button", text: "+ دخل", onclick: function () { var n = { id: uid(), name: "", amount: 0, src: "pension" }; m.income.push(n); save(path); render(); focusRow(n.id); } }),
+          el("button", { class: "add", type: "button", text: "+ بند", onclick: function () { var n = { id: uid(), name: "", amount: 0, src: "pension" }; m.income.push(n); save(path); render(); focusRow(n.id); } }),
           copyPrev("income"))
       ];
     });
@@ -516,7 +516,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
         el("div", { class: "ro" }, el("span", { text: "رصيد الصندوق" }), el("b", { class: "num" + (bal < 0 ? " neg" : ""), text: money(bal) })),
         list("income", "الوارد هذا الشهر", "المتبرع أو المصدر", "+ وارد"),
         list("spend", "المصروف هذا الشهر", "وجه الصرف", "+ مصروف"),
-        el("p", { class: "hint", text: "حساب مستقل لا يدخل في الدخل والمصروفات." })
+        el("p", { class: "hint", text: "حساب مستقل لا يدخل في حقوق الملكية والمصروفات." })
       ];
     });
   }
@@ -657,7 +657,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
         START === startSel && !earlier.length ? el("p", { class: "hint ok-msg", text: "الميزانية تبدأ من " + monthLabel(START) + "." }) : el("div", { class: "line" },
           el("button", { class: "add", type: "button", style: startArm ? "border-color:var(--bad);color:var(--bad)" : null, text: startArm ? (earlier.length ? "تأكيد: احذف " + fmt.format(earlier.length) + " من الأشهر قبل " + monthLabel(startSel) : "تأكيد") : "تطبيق", onclick: function () { if (startArm) applyStart(); else { startArm = true; render(); } } }),
           startArm ? el("button", { class: "add", type: "button", text: "إلغاء", onclick: function () { startArm = false; render(); } }) : null),
-        el("p", { class: "hint", text: "كل شيء يبدأ من هذا الشهر: الدخل والمصروفات وأقساط الديون والأمانة والصندوق الخيري. الأشهر وقيود الصندوق قبله تُحذف ولا تُحسب. الديون تبقى بمتبقيها الحالي، وأقساطها تُحسب من شهر البداية فقط. تُنزَّل نسخة احتياطية تلقائيًا قبل التطبيق." }));
+        el("p", { class: "hint", text: "كل شيء يبدأ من هذا الشهر: حقوق الملكية والمصروفات وأقساط الديون والأمانة والصندوق الخيري. الأشهر وقيود الصندوق قبله تُحذف ولا تُحسب. الديون تبقى بمتبقيها الحالي، وأقساطها تُحسب من شهر البداية فقط. تُنزَّل نسخة احتياطية تلقائيًا قبل التطبيق." }));
       function pick(e) {
         var f = e.target.files && e.target.files[0]; if (!f) return;
         var r = new FileReader();
