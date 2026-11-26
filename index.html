@@ -122,7 +122,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 <script>
 (function () {
   "use strict";
-  var APP_VERSION = 70;
+  var APP_VERSION = 71;
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { maximumFractionDigits: 2 });
   var fmtAmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -257,7 +257,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
   function totals(key) {
     key = key || S.month;
     if (memo[key]) return memo[key];
-    if (START && key < START) return (memo[key] = { income: 0, exp: 0, debts: 0, fromSave: 0, manual: 0, inc: { salary: 0, pension: 0 }, left: { salary: 0, pension: 0 }, spent: 0, auto: 0, saving: 0, over: 0 });
+    if (START && key < START) return (memo[key] = { income: 0, exp: 0, debts: 0, fromSave: 0, manual: 0, by: { salary: 0, pension: 0, saving: 0 }, inc: { salary: 0, pension: 0 }, left: { salary: 0, pension: 0 }, spent: 0, auto: 0, saving: 0, over: 0 });
     var m = monthDoc(key), by = { salary: 0, pension: 0, saving: 0 };
     eachExpense(m, function (it, v) { by[srcOf(it)] += v; });
     var debtBy = { salary: 0, pension: 0 };
@@ -266,6 +266,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
       manual: sum(saveItems(), function (it) { return savedManual(m, it.id); }) };
     t.inc = { salary: sum(m.income.filter(function (x) { return incomeSrc(x) === "salary"; }), amt), pension: sum(m.income.filter(function (x) { return incomeSrc(x) !== "salary"; }), amt) };
     t.left = { salary: t.inc.salary - by.salary - debtBy.salary, pension: t.inc.pension - by.pension - debtBy.pension };
+    t.by = by;
     t.spent = t.exp + t.debts;
     /* what is left of the salary and extra income after expenses, installments and typed deposits goes to savings automatically */
     t.auto = autoOn() && saveItems().length ? Math.max(t.income - (t.spent - t.fromSave) - t.manual, 0) : 0;
@@ -342,7 +343,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
   /* where an expense is paid from: salary, extra income, or a savings item */
   function expSrcSelect(it, path) {
     var items = saveItems(), opts = [["salary", "راتب"], ["pension", "إضافي"]];
-    items.forEach(function (s) { opts.push(["saving:" + s.id, items.length > 1 ? "أمانة " + (s.name || "") : "الأمانة"]); });
+    items.forEach(function (s) { opts.push(["saving:" + s.id, items.length > 1 ? (/أمانة/.test(s.name || "") ? s.name : "أمانة " + (s.name || "")) : "الأمانة"]); });
     var cur = srcOf(it), val = cur === "saving" ? "saving:" + (it.saveFrom && items.some(function (s) { return s.id === it.saveFrom; }) ? it.saveFrom : items[0] ? items[0].id : "") : cur;
     return selectEl(opts, val, function (v) {
       if (v.indexOf("saving:") === 0) { it.src = "saving"; it.saveFrom = v.slice(7); } else { it.src = v; }
@@ -373,7 +374,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
       income: money(t.income), spent: money(t.spent), saving: money(t.saving), bal: money(st.bal),
       charity: money(sum((S.charity.income || []).filter(function (x) { return !(START && x.date && x.date.slice(0, 7) < START); }), amt) - sum((S.charity.spend || []).filter(function (x) { return !(START && x.date && x.date.slice(0, 7) < START); }), amt)),
       leftS: money(t.left.salary), leftP: money(t.left.pension), leftA: money(t.left.salary + t.left.pension),
-      exp: money(t.exp), debts: money(t.debts), auto: money(t.auto),
+      exp: money(t.exp), expS: money(t.by.salary + t.by.saving), expP: money(t.by.pension), debts: money(t.debts), auto: money(t.auto),
       over: t.over ? "المصروفات تتجاوز الدخل بـ " + money(t.over) + " ريال" : ""
     };
     document.querySelectorAll("[data-f]").forEach(function (n) { var k = n.getAttribute("data-f"); if (k in FIGS) n.textContent = FIGS[k]; });
@@ -428,8 +429,9 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
       ];
     });
   }
-  function expensesPanel() {
-    var m = monthDoc(), path = mpath();
+  /* two expense windows: paid from the salary (with items paid from الأمانة) and paid from the extra income */
+  function expensesPanel(kind) {
+    var m = monthDoc(), path = mpath(), mine = function (it) { var k = srcOf(it); return kind === "salary" ? k !== "pension" : k === "pension"; };
     function amountRow(it, listPath, list, isUnsched) {
       return el("div", { class: "row", "data-id": it.id },
         textInput(isUnsched ? it.name || it.category : it.name, function (v) { it.name = v; save(isUnsched ? path : listPath); }, "اسم المصروف", isUnsched ? "مصروف هذا الشهر" : "اسم البند"),
@@ -438,21 +440,25 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
         expSrcSelect(it, isUnsched ? path : listPath),
         delBtn(it.name, function () { list.splice(list.indexOf(it), 1); save(isUnsched ? path : listPath); if (!isUnsched) { delete m.actual[it.id]; save(path); } }));
     }
-    return panel("expenses", "المصروفات", "exp", function () {
-      var out = [el("div", { class: "sub" }, "ثابتة كل شهر", el("span", { text: "المبلغ لهذا الشهر" }))];
+    var src = kind === "salary" ? "salary" : "pension";
+    return panel(kind === "salary" ? "expenses" : "expensesP", kind === "salary" ? "مصروفات الراتب" : "مصروفات الإضافي", kind === "salary" ? "expS" : "expP", function () {
+      var out = [el("div", { class: "sub" }, "ثابتة كل شهر", el("span", { text: "المبلغ لهذا الشهر" }))], any = false;
       schedLists().forEach(function (l) {
+        var items = l.items.filter(mine); if (!items.length) return;
         if (l.name) out.push(el("div", { class: "sub" }, l.name));
-        l.items.forEach(function (it) { out.push(amountRow(it, l.path, l.items, false)); });
+        items.forEach(function (it) { any = true; out.push(amountRow(it, l.path, l.items, false)); });
       });
+      if (!any) out.push(el("p", { class: "empty", text: "لا توجد بنود ثابتة." }));
       if (schedOn()) out.push(el("div", { class: "acts" },
-        el("button", { class: "add", type: "button", text: "+ بند ثابت", onclick: function () { var n = { id: uid(), name: "", amount: 0 }; S.estimates.fixed.push(n); save("settings/estimates"); render(); focusRow(n.id); } }),
-        copyPrev("expenses")));
+        el("button", { class: "add", type: "button", text: "+ بند ثابت", onclick: function () { var n = { id: uid(), name: "", amount: 0, src: src }; S.estimates.fixed.push(n); save("settings/estimates"); render(); focusRow(n.id); } }),
+        copyPrev("expenses-" + kind)));
       if (unschedOn()) {
+        var un = m.unscheduled.filter(mine);
         out.push(el("div", { class: "sub" }, "هذا الشهر فقط", el("span", { text: "غير مجدولة" })));
-        m.unscheduled.forEach(function (it) { out.push(amountRow(it, path, m.unscheduled, true)); });
-        out.push(el("div", { class: "acts" }, el("button", { class: "add", type: "button", text: "+ مصروف طارئ", onclick: function () { var n = { id: uid(), name: "", category: "أخرى", amount: 0 }; m.unscheduled.push(n); save(path); render(); focusRow(n.id); } })));
+        un.forEach(function (it) { out.push(amountRow(it, path, m.unscheduled, true)); });
+        out.push(el("div", { class: "acts" }, el("button", { class: "add", type: "button", text: "+ مصروف طارئ", onclick: function () { var n = { id: uid(), name: "", category: "أخرى", amount: 0, src: src }; m.unscheduled.push(n); save(path); render(); focusRow(n.id); } })));
       }
-      out.push(el("p", { class: "hint", text: "اختر من أين يُدفع كل مصروف: الراتب أو الدخل الإضافي أو الأمانة (يُسجل سحبًا من الأمانة)." }));
+      out.push(el("p", { class: "hint", text: kind === "salary" ? "غيّر «يُدفع من» لنقل البند إلى مصروفات الإضافي. البنود المدفوعة من الأمانة تظهر هنا وتُسجل سحبًا من الأمانة." : "غيّر «يُدفع من» لنقل البند إلى مصروفات الراتب أو الدفع من الأمانة." }));
       return out;
     });
   }
@@ -703,7 +709,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     var y = window.scrollY;
     $("month").replaceChildren.apply($("month"), monthBar().filter(Boolean));
     $("sum").replaceChildren.apply($("sum"), summary().filter(Boolean));
-    $("panels").replaceChildren(incomePanel(), expensesPanel(), debtsPanel(), savingsPanel(), charityPanel(), settingsPanel());
+    $("panels").replaceChildren(incomePanel(), expensesPanel("salary"), expensesPanel("pension"), debtsPanel(), savingsPanel(), charityPanel(), settingsPanel());
     $("ver").textContent = "الإصدار " + APP_VERSION;
     refresh();
     window.scrollTo(0, y);
