@@ -122,7 +122,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 <script>
 (function () {
   "use strict";
-  var APP_VERSION = 67;
+  var APP_VERSION = 68;
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { maximumFractionDigits: 2 });
   var fmtAmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -180,7 +180,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
   var DEFAULTS = {
     estimates: { fixed: [], variable: [] },
     debts: { list: [], owed: [] },
-    savings: { items: [{ id: "s1", name: "الادخار الشهري" }] },
+    savings: { items: [{ id: "s1", name: "الأمانة" }] },
     sections: { names: {}, hidden: {}, custom: [] }
   };
   var SETTINGS = ["estimates", "debts", "savings", "sections"];
@@ -229,6 +229,8 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     customSecs().forEach(function (c) { c.items = c.items || []; out.push({ name: c.name || "قسم", items: c.items, path: "settings/sections" }); });
     return out;
   }
+  /* «الادخار» is called «الأمانة» from v68; the default item's old name follows */
+  (S.savings.items || []).forEach(function (it) { if (it.id === "s1" && it.name === "الادخار الشهري") { it.name = "الأمانة"; save("settings/savings"); } });
   function saveItems() { if (!S.savings.items) S.savings.items = clone(DEFAULTS.savings.items); return S.savings.items; }
   function savedManual(m, id) { return m.saved && id in m.saved ? +m.saved[id] || 0 : id === "s1" ? +m.savingDeposit || 0 : 0; }
   function setSaved(m, id, v) { if (!m.saved) { m.saved = { s1: +m.savingDeposit || 0 }; m.savingDeposit = 0; } m.saved[id] = v; }
@@ -335,7 +337,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
   /* where an expense is paid from: salary, extra income, or a savings item */
   function expSrcSelect(it, path) {
     var items = saveItems(), opts = [["salary", "راتب"], ["pension", "إضافي"]];
-    items.forEach(function (s) { opts.push(["saving:" + s.id, items.length > 1 ? "ادخار " + (s.name || "") : "ادخار"]); });
+    items.forEach(function (s) { opts.push(["saving:" + s.id, items.length > 1 ? "أمانة " + (s.name || "") : "الأمانة"]); });
     var cur = srcOf(it), val = cur === "saving" ? "saving:" + (it.saveFrom && items.some(function (s) { return s.id === it.saveFrom; }) ? it.saveFrom : items[0] ? items[0].id : "") : cur;
     return selectEl(opts, val, function (v) {
       if (v.indexOf("saving:") === 0) { it.src = "saving"; it.saveFrom = v.slice(7); } else { it.src = v; }
@@ -390,11 +392,11 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
       el("div", { class: "kpis" },
         el("div", { class: "kpi" }, el("small", { text: "الدخل" }), el("b", { class: "num", "data-f": "income" })),
         el("div", { class: "kpi" }, el("small", { text: "المصروفات والأقساط" }), el("b", { class: "num", "data-f": "spent" })),
-        el("div", { class: "kpi pos" }, el("small", { text: "ادخار الشهر" }), el("b", { class: "num", "data-f": "saving" }))),
+        el("div", { class: "kpi pos" }, el("small", { text: "أمانة الشهر" }), el("b", { class: "num", "data-f": "saving" }))),
       el("div", { class: "kpis two" },
         el("div", { class: "kpi", id: "kS" }, el("small", { text: "المتبقي من الراتب" }), el("b", { class: "num", "data-f": "leftS" })),
         el("div", { class: "kpi", id: "kP" }, el("small", { text: "المتبقي من الدخل الإضافي" }), el("b", { class: "num", "data-f": "leftP" }))),
-      el("div", { class: "total-save" }, el("span", { text: "مجموع الادخار الحالي" }), el("b", { class: "num", "data-f": "bal" })),
+      el("div", { class: "total-save" }, el("span", { text: "مجموع الأمانة الحالي" }), el("b", { class: "num", "data-f": "bal" })),
       el("div", { class: "alert", id: "over", "data-f": "over", hidden: true }),
       reminder ? el("div", { class: "alert info" }, el("span", { text: reminder }),
         el("button", { type: "button", "aria-label": "إغلاق التذكير", text: "×", onclick: function () { lsSet("backupReminderClosed", Date.now()); render(); } })) : null
@@ -443,7 +445,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
         m.unscheduled.forEach(function (it) { out.push(amountRow(it, path, m.unscheduled, true)); });
         out.push(el("div", { class: "acts" }, el("button", { class: "add", type: "button", text: "+ مصروف طارئ", onclick: function () { var n = { id: uid(), name: "", category: "أخرى", amount: 0 }; m.unscheduled.push(n); save(path); render(); focusRow(n.id); } })));
       }
-      out.push(el("p", { class: "hint", text: "اختر من أين يُدفع كل مصروف: الراتب أو الدخل الإضافي أو الادخار (يُسجل سحبًا من الادخار)." }));
+      out.push(el("p", { class: "hint", text: "اختر من أين يُدفع كل مصروف: الراتب أو الدخل الإضافي أو الأمانة (يُسجل سحبًا من الأمانة)." }));
       return out;
     });
   }
@@ -478,19 +480,19 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     var m = monthDoc(), path = mpath(), items = saveItems(), spath = "settings/savings";
     m.withdrawals = m.withdrawals || [];
     var itemOpts = items.map(function (s) { return [s.id, s.name || "بلا اسم"]; });
-    return panel("savings", "الادخار", "bal", function () {
+    return panel("savings", "الأمانة", "bal", function () {
       var st = saveTotal();
       return [
         el("div", { class: "ro" }, el("span", { text: "تأسيسي " + money(st.base) + " + إيداعات " + money(st.manual + st.auto) + " − سحوبات " + money(st.out) })),
         el("div", { class: "line" },
           el("label", { class: "line" }, el("input", { type: "checkbox", checked: autoOn() ? true : null, style: "width:18px;height:18px", onchange: function (e) { S.savings.auto = e.target.checked; save(spath); render(); } }), "إيداع المتبقي تلقائيًا في"),
-          items.length > 1 ? selectEl(itemOpts, autoItemId(), function (v) { S.savings.autoTo = v; save(spath); render(); }, "بند الادخار التلقائي") : el("b", { text: items[0] ? items[0].name : "" }),
+          items.length > 1 ? selectEl(itemOpts, autoItemId(), function (v) { S.savings.autoTo = v; save(spath); render(); }, "بند الأمانة التلقائي") : el("b", { text: items[0] ? items[0].name : "" }),
           autoOn() ? el("span", { class: "hint" }, "هذا الشهر: ", el("b", { class: "num", "data-f": "auto" })) : null),
         el("div", { class: "sub" }, "البنود", el("span", { text: "إيداع يدوي هذا الشهر" })),
         items.map(function (s) {
           return [
             el("div", { class: "row nosrc", "data-id": s.id },
-              textInput(s.name, function (v) { s.name = v; save(spath); }, "اسم بند الادخار", "مثل: صندوق الطوارئ"),
+              textInput(s.name, function (v) { s.name = v; save(spath); }, "اسم بند الأمانة", "مثل: صندوق الطوارئ"),
               amountInput(savedManual(m, s.id), function (v) { setSaved(m, s.id, v); save(path); }, "إيداع " + (s.name || "") + " هذا الشهر"),
               items.length > 1 ? delBtn(s.name, function () { items.splice(items.indexOf(s), 1); save(spath); }) : el("span")),
             el("div", { class: "meta" },
@@ -501,7 +503,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
                 onblur: function (e) { var v = parseAmount(e.target.value); e.target.value = v ? money(v) : ""; } })))
           ];
         }),
-        el("div", { class: "acts" }, el("button", { class: "add", type: "button", text: "+ بند ادخار", onclick: function () { var n = { id: uid(), name: "" }; items.push(n); save(spath); render(); focusRow(n.id); } })),
+        el("div", { class: "acts" }, el("button", { class: "add", type: "button", text: "+ بند أمانة", onclick: function () { var n = { id: uid(), name: "" }; items.push(n); save(spath); render(); focusRow(n.id); } })),
         el("div", { class: "sub" }, "السحوبات هذا الشهر"),
         m.withdrawals.map(function (w) {
           if (!w.from && items[0]) w.from = items[0].id;
@@ -511,7 +513,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
             selectEl(itemOpts, w.from, function (v) { w.from = v; save(path); render(); }, "من بند"),
             delBtn(w.name, function () { m.withdrawals.splice(m.withdrawals.indexOf(w), 1); save(path); }));
         }),
-        expWithdrawals(m).map(function (w) { return el("div", { class: "ro" }, el("span", { text: (w.name || "مصروف") + " (مصروف من الادخار)" }), el("b", { class: "num", text: money(w.amount) })); }),
+        expWithdrawals(m).map(function (w) { return el("div", { class: "ro" }, el("span", { text: (w.name || "مصروف") + " (مصروف من الأمانة)" }), el("b", { class: "num", text: money(w.amount) })); }),
         el("div", { class: "acts" }, el("button", { class: "add", type: "button", text: "+ سحب", onclick: function () { var n = { id: uid(), name: "", from: items[0] ? items[0].id : "", amount: 0 }; m.withdrawals.push(n); save(path); render(); focusRow(n.id); } }))
       ];
     });
