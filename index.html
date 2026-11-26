@@ -241,6 +241,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 .debt-party { min-width: 0; display: grid; } .debt-party b { overflow-wrap: anywhere; } .debt-party small, .debt-left small { color: var(--muted); font-size: .78rem; font-weight: 400; }
 .debt-left { display: grid; text-align: left; color: var(--gold); font-weight: 700; } .debt-left.pos { color: var(--ok); }
 .kpis.kpis-2 { grid-template-columns: 1fr 1fr; } .kpis.kpis-2 .kpi:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.auto-toggle { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; } .auto-toggle input { width: 20px; height: 20px; flex: none; accent-color: var(--gold); }
 .src-items { margin-top: 10px; display: grid; gap: 6px; } .src-items .total { border-top-style: dashed; padding-top: 6px; font-family: inherit; font-size: .92rem; }
 .sum-link { color: inherit; text-decoration: none; } .sum-link:hover span, .sum-link:focus-visible span { color: var(--gold); }
 .src-row { grid-template-columns: minmax(0, 1fr) 136px 52px; grid-template-areas: "name name name" "src amt del"; }
@@ -673,7 +674,13 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   var amt = function (x) { return x.amount; };
   /* savings: named items with an amount per month (older months kept one figure in savingDeposit) */
   function saveItems() { if (!S.savings.items) S.savings.items = clone(DEFAULTS.savings.items); return S.savings.items; }
-  function savedOf(m, id) { return m.saved && id in m.saved ? +m.saved[id] || 0 : id === "s1" ? +m.savingDeposit || 0 : 0; }
+  /* what was typed as a deposit; savedOf adds the automatic deposit (the month's leftover) to the chosen item */
+  function savedManual(m, id) { return m.saved && id in m.saved ? +m.saved[id] || 0 : id === "s1" ? +m.savingDeposit || 0 : 0; }
+  function autoOn() { return S.savings.auto !== false; }
+  function autoItemId() { var items = saveItems(); return items.some(function (x) { return x.id === S.savings.autoTo; }) ? S.savings.autoTo : items[0] && items[0].id; }
+  function keyOf(m) { for (var k in S.months) if (S.months[k] === m) return k; return null; }
+  function autoOf(m) { var k = keyOf(m); return k && autoOn() ? totals(k).auto : 0; }
+  function savedOf(m, id) { return savedManual(m, id) + (autoOn() && id === autoItemId() ? autoOf(m) : 0); }
   function setSaved(m, id, v) { if (!m.saved) { m.saved = { s1: +m.savingDeposit || 0 }; m.savingDeposit = 0; } m.saved[id] = v; }
   /* expenses whose deduction source is savings count as withdrawals of that month (read-only lines; edited from the expense) */
   function expWithdrawals(m) {
@@ -777,7 +784,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       customAct: customTotal(m, "actual"),
       customExp: customTotal(m, "expenses"),
       debts: sum(S.debts.list, function (d) { return (+d.remaining || 0) > 0 ? d.installment : 0; }),
-      saving: sum(saveItems(), function (it) { return savedOf(m, it.id); })
+      manualSaving: sum(saveItems(), function (it) { return savedManual(m, it.id); })
     };
     t.custom = t.customAct + t.customExp;
     t.spent = t.actFixed + t.actVar + t.unsched + t.custom + t.debts;
@@ -785,6 +792,9 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     t.fromSave = r.saving ? r.saving.exp : 0;
     t.fromInv = r.invest ? r.invest.exp : 0;
     /* expenses paid from savings or investments do not come out of this month's income */
+    /* whatever is left of the salary and extra income after expenses, instalments and typed deposits goes to savings automatically */
+    t.auto = autoOn() && saveItems().length ? Math.max(t.income - (t.spent - t.fromSave - t.fromInv) - t.manualSaving, 0) : 0;
+    t.saving = t.manualSaving + t.auto;
     t.left = t.income - (t.spent - t.fromSave - t.fromInv) - t.saving;
     return t;
   }
@@ -1005,7 +1015,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           if (S.month !== key) return;
           var m = monthDoc(key), n = 0;
           if (pm && what === "saving") {
-            saveItems().forEach(function (it) { var v = savedOf(pm, it.id); if (v && !savedOf(m, it.id)) { setSaved(m, it.id, v); n++; } });
+            saveItems().forEach(function (it) { var v = savedManual(pm, it.id); if (v && !savedManual(m, it.id)) { setSaved(m, it.id, v); n++; } });
           } else if (pm && what === "income") {
             pm.income.forEach(function (it) {
               var cur = m.income.filter(function (x) { return x.name === it.name; })[0];
@@ -1093,7 +1103,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 63" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 64" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1502,7 +1512,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           var q = savedOf(m, it.id);
           return el("div", { class: "debt-row" },
             el("a", { class: "debt-link", href: "#sav-" + it.id },
-              el("span", { class: "debt-party" }, el("b", { text: it.name || "بلا اسم" })),
+              el("span", { class: "debt-party" }, el("b", { text: it.name || "بلا اسم" }), autoOn() && it.id === autoItemId() ? el("small", { text: "يستقبل المتبقي تلقائيًا" }) : null),
               el("span", { class: "debt-left num" }, el("small", { text: "إيداع الشهر" }), money(q)),
               svg(ICON_BACK.replace('M9 6l6 6-6 6', 'M15 6l-6 6 6 6'))));
         })) : el("p", { class: "empty", text: "لا توجد بنود ادخار." }),
@@ -1511,9 +1521,21 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
           setTimeout(function () { var n = $("svn-" + it.id); if (n) n.focus(); }, 0);
         } }),
         totalRow("إجمالي الإيداعات", "sdi"), totalRow("إيداعات هذا الشهر", "sdq"), totalRow("الرصيد الحالي", "sdb"), totalRow("النسبة من الدخل", "sv")),
-      copyPrevBtn("saving")];
+      autoCard(), copyPrevBtn("saving")];
   };
 
+  /* the automatic deposit: on/off and which savings item receives the month's leftover */
+  function autoCard() {
+    var items = saveItems(), t = totals(), path = "settings/savings";
+    if (!items.length) return null;
+    return el("div", { class: "card" }, el("h3", { text: "الادخار التلقائي" }),
+      el("label", { class: "auto-toggle" }, el("input", { type: "checkbox", checked: autoOn() ? "" : null, disabled: S.readOnly ? "" : null, onchange: function (e) { S.savings.auto = e.target.checked; save(path); render(); } }),
+        el("span", { text: "ما يتبقى من الراتب والدخل الإضافي بعد المصروفات والأقساط يُودَع في الادخار تلقائيًا" })),
+      autoOn() ? el("label", null, "يُودَع في", el("select", { id: "auto-to", disabled: S.readOnly ? "" : null, onchange: function (e) { S.savings.autoTo = e.target.value; save(path); render(); } },
+        items.map(function (x, n) { var o = el("option", { value: x.id, text: fmt.format(n + 1) + ". " + (x.name || "بلا اسم") }); if (x.id === autoItemId()) o.selected = true; return o; }))) : null,
+      autoOn() ? el("div", { class: "total" }, el("span", { text: "المتبقي المُودَع تلقائيًا في " + monthName(S.month, true) }), el("b", { class: "num pos", text: money(t.auto) })) : null,
+      el("p", { class: "hint", text: autoOn() ? "يُحسب لكل شهر ويتغير كلما غيّرت الدخل أو المصروفات، ويدخل في الرصيد والملخصات والرسم البياني. ما تكتبه يدويًا في الإيداع يُخصم منه أولًا." : "متوقف: الادخار هو ما تكتبه يدويًا فقط." }));
+  }
   function saveDetail(it) {
     var head = header(it.name || "بند ادخار", "save-monthly", "الإيداع");
     var wait = saveMonthsReady("sav-" + it.id, head); if (wait) return wait;
@@ -1529,7 +1551,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
             el("label", { class: "why" }, "اسم الادخار", textInput("svn-" + it.id, it.name, function (v) { it.name = v; save(path); }, "اسم الادخار", "مثال: صندوق الطوارئ")),
             delBtn(it.name, function () { list.splice(list.indexOf(it), 1); save(path); go("save-monthly"); })),
           el("div", { class: "subform" },
-            el("label", null, "الإيداع في " + monthName(S.month, true), amountInput("sva-" + it.id, savedOf(m, it.id), function (v) { setSaved(m, it.id, v); save(mpath); }, "إيداع " + (it.name || "الادخار") + " هذا الشهر")))),
+            autoOn() && it.id === autoItemId() ? el("div", { class: "total" }, el("span", { text: "المتبقي المُودَع تلقائيًا" }), el("b", { class: "num pos", text: money(autoOf(m)) })) : null,
+            el("label", null, (autoOn() && it.id === autoItemId() ? "إيداع إضافي يدوي في " : "الإيداع في ") + monthName(S.month, true), amountInput("sva-" + it.id, savedManual(m, it.id), function (v) { setSaved(m, it.id, v); save(mpath); }, "إيداع " + (it.name || "الادخار") + " هذا الشهر")))),
         totalRow("المبلغ التأسيسي", "sdBase"), totalRow("إجمالي الإيداعات", "sdIn"), totalRow("السحوبات منه", "sdOut"), totalRow("الرصيد الحالي", "sdBal")),
       el("p", { class: "hint", text: "الرصيد الحالي = المبلغ التأسيسي + إيداعات جميع الأشهر − السحوبات. غيّر الشهر من الأعلى لتسجيل إيداع شهر آخر. والمبلغ التأسيسي يُعدّل من «المبلغ التأسيسي» في «إجمالي الادخار»." })];
   }
@@ -1969,7 +1992,8 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         })) : el("p", { class: "empty", text: "لا مصروفات من " + title + " في هذا الشهر." }));
     }
     return [header("حسب مصدر الدخل", "expenses", "المصروفات"), monthBar(), (function () { var k = kpiRow(kp); k.classList.add("kpis-2"); return k; })(),
-      el("div", { class: "card" }, el("div", { class: "total" }, el("span", { text: "المتبقي من الراتب والدخل الإضافي معًا" }), el("b", { class: "num " + (lS + lP < 0 ? "neg" : "pos"), text: money(lS + lP) }))),
+      el("div", { class: "card" }, el("div", { class: "total" }, el("span", { text: "المتبقي من الراتب والدخل الإضافي معًا" }), el("b", { class: "num " + (lS + lP < 0 ? "neg" : "pos"), text: money(lS + lP) })),
+        autoOn() && saveItems().length ? el("a", { class: "hint sum-link", href: "#save-monthly", text: "يُودَع المتبقي تلقائيًا في الادخار «" + ((saveItems().filter(function (x) { return x.id === autoItemId(); })[0] || {}).name || "الادخار") + "»." }) : null),
       card("salary", "الراتب", true), card("pension", "الدخل الإضافي", true), card("saving", "الادخار", false), card("invest", "الاستثمار", false),
       el("p", { class: "hint", text: "يُحدَّد مصدر كل مصروف من صفحته (جهة الاستقطاع)، والبند الذي لم تُحدَّد جهته يُحسب من الراتب. نوع كل دخل يُحدَّد من «مصادر الدخل». اضغط على أي بند لتغييره." })];
   };
