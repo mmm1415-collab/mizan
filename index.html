@@ -96,6 +96,11 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 .err-msg { color: var(--bad); }
 .empty { margin: 0; color: var(--muted); font-size: .85rem; text-align: center; padding: 6px; }
 .tot { display: flex; justify-content: space-between; border-top: 1px dashed var(--line); padding-top: 6px; margin-top: 2px; font-family: var(--font-display); font-size: .88rem; }
+.mtab { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.mtab th { color: var(--muted); font-weight: 400; text-align: right; padding: 4px; border-bottom: 1px solid var(--line); }
+.mtab td { padding: 6px 4px; border-bottom: 1px dashed var(--line); cursor: pointer; }
+.mtab td.num, .mtab th + th { text-align: left; }
+.mtab tr.on td { color: var(--gold); }
 .ver { text-align: center; color: var(--muted); font-size: .72rem; margin-top: 14px; }
 
 /* lock */
@@ -122,7 +127,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 <script>
 (function () {
   "use strict";
-  var APP_VERSION = 72;
+  var APP_VERSION = 73;
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { maximumFractionDigits: 2 });
   var fmtAmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -520,6 +525,20 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
       ];
     });
   }
+  /* الأمانة month by month: deposits (typed + automatic), withdrawals, and the balance after each month; tap a month to open it */
+  function saveMonths() {
+    var keys = storedKeys().concat([S.month]).filter(function (k, i, a) { return a.indexOf(k) === i && !(START && k < START); }).sort();
+    var bal = sum(saveItems(), function (it) { return +it.base || 0; }), rows = [];
+    keys.forEach(function (k) {
+      var mm = S.months[k]; if (!mm) return;
+      var dep = totals(k).saving, out = sum(allWithdrawals(mm), amt); bal += dep - out;
+      if (!dep && !out && k !== S.month) return;
+      rows.push(el("tr", { class: k === S.month ? "on" : null, onclick: function () { S.month = k; render(); } },
+        el("td", { text: monthLabel(k) }), el("td", { class: "num", text: money(dep) }), el("td", { class: "num" + (out ? " neg" : ""), text: money(out) }), el("td", { class: "num", text: money(bal) })));
+    });
+    return rows.length ? el("table", { class: "mtab" }, el("thead", null, el("tr", null, ["الشهر", "إيداع", "سحب", "الرصيد"].map(function (h) { return el("th", { text: h }); }))), el("tbody", null, rows.reverse()))
+      : el("p", { class: "empty", text: "لا توجد أشهر بعد." });
+  }
   function savingsPanel() {
     var m = monthDoc(), path = mpath(), items = saveItems(), spath = "settings/savings";
     m.withdrawals = m.withdrawals || [];
@@ -532,7 +551,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
           el("label", { class: "line" }, el("input", { type: "checkbox", checked: autoOn() ? true : null, style: "width:18px;height:18px", onchange: function (e) { S.savings.auto = e.target.checked; save(spath); render(); } }), "إيداع المتبقي تلقائيًا في"),
           items.length > 1 ? selectEl(itemOpts, autoItemId(), function (v) { S.savings.autoTo = v; save(spath); render(); }, "بند الأمانة التلقائي") : el("b", { text: items[0] ? items[0].name : "" }),
           autoOn() ? el("span", { class: "hint" }, "هذا الشهر: ", el("b", { class: "num", "data-f": "auto" })) : null),
-        el("div", { class: "sub" }, "البنود", el("span", { text: "إيداع يدوي هذا الشهر" })),
+        el("div", { class: "sub" }, "الإيداع هذا الشهر", el("span", { class: "num", "data-f": "saving" })),
         items.map(function (s) {
           return [
             el("div", { class: "row nosrc", "data-id": s.id },
@@ -548,7 +567,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
           ];
         }),
         el("div", { class: "acts" }, el("button", { class: "add", type: "button", text: "+ بند أمانة", onclick: function () { var n = { id: uid(), name: "" }; items.push(n); save(spath); render(); focusRow(n.id); } })),
-        el("div", { class: "sub" }, "السحوبات هذا الشهر"),
+        el("div", { class: "sub" }, "السحب هذا الشهر", el("span", { class: "num", text: money(sum(allWithdrawals(m), amt)) })),
         m.withdrawals.map(function (w) {
           if (!w.from && items[0]) w.from = items[0].id;
           return el("div", { class: "row", "data-id": w.id },
@@ -558,7 +577,9 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
             delBtn(w.name, function () { m.withdrawals.splice(m.withdrawals.indexOf(w), 1); save(path); }));
         }),
         expWithdrawals(m).map(function (w) { return el("div", { class: "ro" }, el("span", { text: (w.name || "مصروف") + " (مصروف من الأمانة)" }), el("b", { class: "num", text: money(w.amount) })); }),
-        el("div", { class: "acts" }, el("button", { class: "add", type: "button", text: "+ سحب", onclick: function () { var n = { id: uid(), name: "", from: items[0] ? items[0].id : "", amount: 0 }; m.withdrawals.push(n); save(path); render(); focusRow(n.id); } }))
+        el("div", { class: "acts" }, el("button", { class: "add", type: "button", text: "+ سحب", onclick: function () { var n = { id: uid(), name: "", from: items[0] ? items[0].id : "", amount: 0 }; m.withdrawals.push(n); save(path); render(); focusRow(n.id); } })),
+        el("div", { class: "sub" }, "الأشهر"),
+        saveMonths()
       ];
     });
   }
