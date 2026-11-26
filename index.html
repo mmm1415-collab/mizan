@@ -60,26 +60,32 @@ button { cursor: pointer; }
 .alert.info button { background: none; border: 0; color: inherit; font-size: 1.1rem; padding: 0 4px; }
 
 /* panels */
-.panels { display: grid; gap: 10px; margin-top: 10px; }
+.panels { display: grid; gap: 14px; margin-top: 10px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
 .ph { width: 100%; display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 12px 14px; text-align: right; }
 .ph h2 { margin: 0; flex: 1; font-family: var(--font-display); font-size: 1rem; font-weight: 600; }
 .ph .fig { font-family: var(--font-display); font-size: .92rem; color: var(--gold); }
 .ph .chev { width: 18px; height: 18px; color: var(--muted); transition: transform .2s; flex: none; }
 .panel.open .ph .chev { transform: rotate(-90deg); }
-/* every window has its own tint; the parts inside it alternate shades of that tint */
-.panel[data-p="income"] { --tint: 92,194,154; }
-.panel[data-p="expenses"] { --tint: 229,130,114; }
-.panel[data-p="expensesP"] { --tint: 227,181,82; }
-.panel[data-p="debts"] { --tint: 186,104,200; }
-.panel[data-p="savings"] { --tint: 90,170,230; }
-.panel[data-p="charity"] { --tint: 70,200,200; }
-.panel[data-p="settings"] { --tint: 150,160,185; }
-.panel[data-p] { background: linear-gradient(rgba(var(--tint),.10), rgba(var(--tint),.10)), var(--panel); border-color: rgba(var(--tint),.45); }
-.panel[data-p] .ph h2 { color: rgb(var(--tint)); }
-.grp { display: grid; gap: 6px; padding: 8px; border-radius: 10px; background: rgba(var(--tint),.10); border: 1px solid rgba(var(--tint),.22); }
-.grp:nth-of-type(even) { background: rgba(0,0,0,.20); }
-.panel[data-p] .sub { color: rgb(var(--tint)); }
+/* one solid colour per main section: الميزان brown, حقوق الملكية green, المصروفات red, الديون purple, الأمانة blue, الصندوق teal */
+.panel[data-p="income"] { --tint: 46,140,87; }
+.panel[data-p="expenses"], .panel[data-p="expensesP"] { --tint: 190,64,64; }
+.panel[data-p="debts"] { --tint: 125,75,170; }
+.panel[data-p="savings"] { --tint: 40,105,190; }
+.panel[data-p="charity"] { --tint: 25,140,140; }
+.panel[data-p="settings"] { --tint: 110,120,140; }
+.panel[data-p] { background: linear-gradient(rgba(var(--tint),.38), rgba(var(--tint),.38)), var(--bg-deep); border: 2px solid rgb(var(--tint)); }
+.panel[data-p] .ph { background: rgb(var(--tint)); }
+.panel[data-p] .ph h2, .panel[data-p] .ph .fig, .panel[data-p] .ph .chev { color: #fff; }
+.panel[data-p] .pb { border-top: 0; gap: 10px; }
+.grp { display: grid; gap: 6px; padding: 0 10px 10px; border-radius: 10px; background: rgba(4,10,24,.35); border: 1px solid rgba(var(--tint),.9); overflow: hidden; }
+.grp > .sub:first-child { margin: 0 -10px 4px; padding: 6px 10px; background: rgba(var(--tint),.7); color: #fff; font-size: .86rem; }
+.grp > .sub:first-child span { color: rgba(255,255,255,.85); }
+.panel[data-p] .sub { color: #fff; }
+/* الميزان (summary and month) in brown */
+.sum, .month { --tint: 140,95,50; background: linear-gradient(rgba(var(--tint),.45), rgba(var(--tint),.45)), var(--bg-deep); border: 2px solid rgb(var(--tint)); }
+.month .icon-btn { background: rgba(0,0,0,.25); border-color: rgba(255,255,255,.3); color: #fff; }
+.kpi { background: rgba(0,0,0,.28); }
 .pb { padding: 0 12px 12px; display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; }
 .sub { display: flex; justify-content: space-between; align-items: baseline; color: var(--gold); font-family: var(--font-display); font-size: .8rem; margin-top: 6px; }
 .sub:first-child { margin-top: 0; }
@@ -140,7 +146,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 <script>
 (function () {
   "use strict";
-  var APP_VERSION = 74;
+  var APP_VERSION = 75;
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { maximumFractionDigits: 2 });
   var fmtAmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
