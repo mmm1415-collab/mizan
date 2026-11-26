@@ -165,7 +165,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 <script>
 (function () {
   "use strict";
-  var APP_VERSION = 78;
+  var APP_VERSION = 79;
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { maximumFractionDigits: 2 });
   var fmtAmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -237,6 +237,8 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
   S.security = lsGet("settings/security") || S.security;
   /* the month the budget starts: nothing before it counts (income, expenses, installments, الأمانة) */
   var START = ((lsGet("settings/start") || {}).month) || "";
+  /* Majed's budget starts in November 2026: hide anything earlier (kept in storage, just not counted) */
+  if (!START || START < "2026-11") { START = "2026-11"; lsSet("settings/start", { month: START }); }
   if (START && S.month < START) S.month = START;
   try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k.indexOf(LS + "months/") === 0) { var mk = k.slice(LS.length + 7); if (/^\d{4}-\d{2}$/.test(mk)) S.months[mk] = Object.assign(emptyMonth(), lsGet("months/" + mk) || {}); } } } catch (e) {}
   function monthDoc(key) { key = key || S.month; if (!S.months[key]) S.months[key] = emptyMonth(); var m = S.months[key]; if (!m.actual) m.actual = {}; if (!m.unscheduled) m.unscheduled = []; if (!m.income) m.income = []; return m; }
