@@ -240,6 +240,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
 .debt-link svg { width: 18px; height: 18px; color: var(--gold); }
 .debt-party { min-width: 0; display: grid; } .debt-party b { overflow-wrap: anywhere; } .debt-party small, .debt-left small { color: var(--muted); font-size: .78rem; font-weight: 400; }
 .debt-left { display: grid; text-align: left; color: var(--gold); font-weight: 700; } .debt-left.pos { color: var(--ok); }
+.src-items { margin-top: 10px; display: grid; gap: 6px; } .src-items .total { border-top-style: dashed; padding-top: 6px; font-family: inherit; font-size: .92rem; }
 .sum-link { color: inherit; text-decoration: none; } .sum-link:hover span, .sum-link:focus-visible span { color: var(--gold); }
 .src-row { grid-template-columns: minmax(0, 1fr) 136px 52px; grid-template-areas: "name name name" "src amt del"; }
 .src-row.grip-on { grid-template-columns: 22px minmax(0, 1fr) 132px 52px; grid-template-areas: "grip name name name" "grip src amt del"; }
@@ -686,13 +687,15 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   function withdrawTotal(m) { return sum(allWithdrawals(m), amt); }
   /* where a payment is deducted from: the salary or the extra income (stored as "pension" from the first version) */
   /* expenses may also be paid from savings or investments (ext); debts and commitments only from income */
-  var SRC_OPTS = [["", "الجهة"], ["salary", "من الراتب"], ["pension", "من الدخل الإضافي"]];
+  /* an item with no source chosen counts as paid from the salary */
+  var SRC_OPTS = [["salary", "من الراتب"], ["pension", "من الدخل الإضافي"]];
   var SRC_EXT = [["saving", "من الادخار"], ["invest", "من الاستثمار"]];
   var SRC_NAME = { salary: "الراتب", pension: "الدخل الإضافي", saving: "الادخار", invest: "الاستثمار", "": "غير محددة" };
   function srcSelect(id, it, path, ext) {
     return el("select", { id: id, class: "src-sel", "aria-label": "جهة الاستقطاع", disabled: S.readOnly ? "" : null, onchange: function (e) { it.src = e.target.value; save(path); if (ext) render(); } },
-      (ext ? SRC_OPTS.concat(SRC_EXT) : SRC_OPTS).map(function (o) { var n = el("option", { value: o[0], text: o[1] }); if ((it.src || "") === o[0]) n.selected = true; return n; }));
+      (ext ? SRC_OPTS.concat(SRC_EXT) : SRC_OPTS).map(function (o) { var n = el("option", { value: o[0], text: o[1] }); if ((it.src || "salary") === o[0]) n.selected = true; return n; }));
   }
+  function srcOf(it) { return it.src || "salary"; }
   /* an income source is the salary or extra income; unset ones are guessed from the name */
   /* which savings item an expense paid from savings is withdrawn from */
   function saveFromField(id, it, path) {
@@ -740,12 +743,22 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
   /* this month's deductions per source: expenses, debt instalments, and commitments on you */
   function srcTotals(key) {
     var m = monthDoc(key), r = {};
-    function add(src, k, v) { src = src || ""; r[src] = r[src] || { exp: 0, debt: 0, cm: 0 }; r[src][k] += +v || 0; }
+    function add(src, k, v) { src = src || "salary"; r[src] = r[src] || { exp: 0, debt: 0, cm: 0 }; r[src][k] += +v || 0; }
     if (secOn("actual")) S.estimates.fixed.forEach(function (it) { add(it.src, "exp", m.actual[it.id]); });
     customSecs().filter(function (c) { return secOn(c.id); }).forEach(function (c) { (c.items || []).forEach(function (it) { add(it.src, "exp", m.actual[it.id]); }); });
     if (secOn("unscheduled")) m.unscheduled.forEach(function (it) { add(it.src, "exp", it.amount); });
     S.debts.list.forEach(function (d) { if ((+d.remaining || 0) > 0) add(d.src, "debt", d.installment); });
     (S.debts.commit || []).forEach(function (c) { add(c.src, "cm", c.amount); });
+    return r;
+  }
+  /* this month's expenses and debt instalments listed per source */
+  function srcItems(key) {
+    var m = monthDoc(key), r = {};
+    function add(it, v, n, href) { v = +v || 0; if (!v) return; var k = srcOf(it); (r[k] = r[k] || []).push({ n: n || it.name || "بلا اسم", v: v, href: href }); }
+    if (secOn("actual")) S.estimates.fixed.forEach(function (it) { add(it, m.actual[it.id], null, "i/act/" + it.id); });
+    customSecs().filter(function (c) { return secOn(c.id); }).forEach(function (c) { (c.items || []).forEach(function (it) { add(it, m.actual[it.id], null, "i/cs" + c.id + "/" + it.id); }); });
+    if (secOn("unscheduled")) m.unscheduled.forEach(function (it) { add(it, it.amount, it.name || it.category, "i/uns/" + it.id); });
+    S.debts.list.forEach(function (d) { if ((+d.remaining || 0) > 0) add(d, d.installment, "قسط: " + (d.creditor || d.name || "دين"), "debt-" + d.id); });
     return r;
   }
   function totals(key) {
@@ -1076,7 +1089,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("div", { class: "grid" },
         tile("budget", "الميزانية", "الدخل · المصروفات · الديون · الادخار · الاستثمار", null),
         tile("services", "الخدمات", "الزكاة · الملخص المالي · الرسم البياني · الملحوظات", null)),
-      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 61" })];
+      notice(), el("p", { class: "hint", style: "text-align:center;opacity:.6", text: "الإصدار 62" })];
   };
   VIEWS.budget = function () {
     var t = totals();
@@ -1183,7 +1196,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
     var parts = secEditor("expenses", ["actual", "unscheduled"],
         { actual: "مصروفات متكررة كل شهر", unscheduled: "مصروفات خارج الخطة" },
         function (k) { return k === "actual" ? money(t.actFixed) : k === "unscheduled" ? money(t.unsched) : money(sumOne(k)); });
-    if (secEditing !== "expenses" && parts[0]) parts[0].append(tile("exp-sum", "ملخص المصروفات", "حسب القسم وأكبر البنود", null));
+    if (secEditing !== "expenses" && parts[0]) parts[0].append(tile("exp-src", "حسب مصدر الدخل", "المصروف من الراتب ومن الدخل الإضافي", null), tile("exp-sum", "ملخص المصروفات", "حسب القسم وأكبر البنود", null));
     return [header("المصروفات", "budget", "الميزانية"), monthBar()].concat(parts);
   };
 
@@ -1198,7 +1211,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       return [header(title, o.back(), o.backLabel()), monthBar(),
         el("div", { class: "card" },
           list.length ? sortable(list, itemsPath, list.map(function (it) {
-            return lineRow(o.kind, it.id, it.name, it.src ? "من " + SRC_NAME[it.src] : "", "مبلغ الشهر", money(m.actual[it.id] || 0));
+            return lineRow(o.kind, it.id, it.name, "من " + SRC_NAME[srcOf(it)], "مبلغ الشهر", money(m.actual[it.id] || 0));
           })) : el("p", { class: "empty", text: "لا توجد بنود بعد. أضف أول بند." }),
           addLine("إضافة بند", list, function () { return { name: "", amount: 0 }; }, itemsPath, o.kind, "an-"),
           totalRow("مجموع الشهر", "act")),
@@ -1234,7 +1247,7 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
       el("p", { class: "hint", text: "مصروفات لم تكن في الخطة، مثل عطل مفاجئ في السيارة أو زيارة طبية طارئة." }),
       el("div", { class: "card" },
         list.length ? sortable(list, path, list.map(function (it) {
-          return lineRow("uns", it.id, it.name, it.category, "المبلغ", money(+it.amount || 0));
+          return lineRow("uns", it.id, it.name, [it.category, "من " + SRC_NAME[srcOf(it)]].filter(Boolean).join(" · "), "المبلغ", money(+it.amount || 0));
         })) : el("p", { class: "empty", text: "لا توجد مصروفات غير مجدولة في هذا الشهر." }),
         addLine("إضافة مصروف", list, function () { return { name: "", category: UNSCHED_CATS[0], amount: 0 }; }, path, "uns", "un-"),
         totalRow("مجموع الشهر", "un"))];
@@ -1926,6 +1939,32 @@ body.drag-active { -webkit-user-select: none; user-select: none; cursor: grabbin
         t.income && t.unsched / t.income > 0.1 ? secName("unscheduled") + " تجاوزت 10% من الدخل." : null,
         top[0] ? "أكبر بند هذا الشهر «" + (top[0].n || "بلا اسم") + "» بمبلغ " + money(top[0].v) + "." : null
       ])));
+  };
+
+  VIEWS["exp-src"] = function () {
+    var m = monthDoc(), r = srcTotals(), items = srcItems();
+    var incOf = function (k) { return sum(m.income.filter(function (it) { return incomeSrc(it) === k; }), amt); };
+    var outOf = function (k) { return r[k] ? r[k].exp + r[k].debt : 0; };
+    var kp = [["من الراتب", money(outOf("salary"))], ["من الدخل الإضافي", money(outOf("pension"))]];
+    if (outOf("saving") || outOf("invest")) kp.push(["من الادخار والاستثمار", money(outOf("saving") + outOf("invest"))]);
+    function card(k, title, withIncome) {
+      var inc = incOf(k), out = outOf(k), left = inc - out, list = items[k] || [];
+      if (!withIncome && !out) return null;
+      return el("div", { class: "card" }, el("h3", { text: title }),
+        withIncome ? el("div", { class: "total" }, el("span", { text: "الدخل" }), el("b", { class: "num", text: money(inc) })) : null,
+        r[k] && r[k].exp ? el("div", { class: "total" }, el("span", { text: "المصروفات" }), el("b", { class: "num", text: money(r[k].exp) })) : null,
+        r[k] && r[k].debt ? el("div", { class: "total" }, el("span", { text: "أقساط الديون" }), el("b", { class: "num", text: money(r[k].debt) })) : null,
+        el("div", { class: "total" }, el("span", { text: "مجموع المصروف" }), el("b", { class: "num neg", text: money(out) })),
+        withIncome ? el("div", { class: "total" }, el("span", { text: "المتبقي" }), el("b", { class: "num " + (left < 0 ? "neg" : "pos"), text: money(left) })) : null,
+        withIncome && inc ? el("div", { class: "track" }, el("div", { class: "fill", style: "width:" + Math.min(out / inc * 100, 100).toFixed(1) + "%" })) : null,
+        withIncome && inc ? el("p", { class: "hint", text: "صُرف " + fmtPct.format(out / inc) + " من " + title + "." + (left < 0 ? " المصروف تجاوز الدخل بـ " + money(-left) + "." : "") }) : null,
+        list.length ? el("div", { class: "src-items" }, list.sort(function (a, b) { return b.v - a.v; }).map(function (x) {
+          return el("a", { class: "total sum-link", href: "#" + x.href }, el("span", { text: x.n }), el("b", { class: "num", text: money(x.v) }));
+        })) : el("p", { class: "empty", text: "لا مصروفات من " + title + " في هذا الشهر." }));
+    }
+    return [header("حسب مصدر الدخل", "expenses", "المصروفات"), monthBar(), kpiRow(kp),
+      card("salary", "الراتب", true), card("pension", "الدخل الإضافي", true), card("saving", "الادخار", false), card("invest", "الاستثمار", false),
+      el("p", { class: "hint", text: "يُحدَّد مصدر كل مصروف من صفحته (جهة الاستقطاع)، والبند الذي لم تُحدَّد جهته يُحسب من الراتب. نوع كل دخل يُحدَّد من «مصادر الدخل». اضغط على أي بند لتغييره." })];
   };
 
   VIEWS["save-sum"] = function () {
