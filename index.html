@@ -181,9 +181,10 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     estimates: { fixed: [], variable: [] },
     debts: { list: [], owed: [] },
     savings: { items: [{ id: "s1", name: "الأمانة" }] },
-    sections: { names: {}, hidden: {}, custom: [] }
+    sections: { names: {}, hidden: {}, custom: [] },
+    charity: { income: [], spend: [] }
   };
-  var SETTINGS = ["estimates", "debts", "savings", "sections"];
+  var SETTINGS = ["estimates", "debts", "savings", "sections", "charity"];
   function emptyMonth() { return { income: [{ id: "i1", name: "الراتب", amount: 0 }, { id: "i2", name: "دخل إضافي", amount: 0 }], actual: {}, unscheduled: [], savingDeposit: 0 }; }
   function realMonth() { var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1); }
   function addMonths(key, n) { var p = key.split("-").map(Number), d = new Date(p[0], p[1] - 1 + n, 1); return d.getFullYear() + "-" + pad(d.getMonth() + 1); }
@@ -191,6 +192,9 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
   var S = { month: realMonth(), months: {}, security: { hash: "", salt: "" } };
   SETTINGS.forEach(function (k) { S[k] = Object.assign(clone(DEFAULTS[k]), lsGet("settings/" + k) || {}); });
   S.security = lsGet("settings/security") || S.security;
+  /* the month the budget starts: nothing before it counts (income, expenses, installments, الأمانة) */
+  var START = ((lsGet("settings/start") || {}).month) || "";
+  if (START && S.month < START) S.month = START;
   try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k.indexOf(LS + "months/") === 0) { var mk = k.slice(LS.length + 7); if (/^\d{4}-\d{2}$/.test(mk)) S.months[mk] = Object.assign(emptyMonth(), lsGet("months/" + mk) || {}); } } } catch (e) {}
   function monthDoc(key) { key = key || S.month; if (!S.months[key]) S.months[key] = emptyMonth(); var m = S.months[key]; if (!m.actual) m.actual = {}; if (!m.unscheduled) m.unscheduled = []; if (!m.income) m.income = []; return m; }
   function dataFor(path) { return path.indexOf("months/") === 0 ? monthDoc(path.slice(7)) : S[path.slice(9)]; }
@@ -253,6 +257,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
   function totals(key) {
     key = key || S.month;
     if (memo[key]) return memo[key];
+    if (START && key < START) return (memo[key] = { income: 0, exp: 0, debts: 0, fromSave: 0, manual: 0, inc: { salary: 0, pension: 0 }, left: { salary: 0, pension: 0 }, spent: 0, auto: 0, saving: 0, over: 0 });
     var m = monthDoc(key), by = { salary: 0, pension: 0, saving: 0 };
     eachExpense(m, function (it, v) { by[srcOf(it)] += v; });
     var debtBy = { salary: 0, pension: 0 };
@@ -269,7 +274,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     return (memo[key] = t);
   }
   function savedOf(key, id) { return savedManual(monthDoc(key), id) + (autoOn() && id === autoItemId() ? totals(key).auto : 0); }
-  function storedKeys() { return Object.keys(S.months).filter(function (k) { return /^\d{4}-\d{2}$/.test(k); }); }
+  function storedKeys() { return Object.keys(S.months).filter(function (k) { return /^\d{4}-\d{2}$/.test(k) && !(START && k < START); }); }
   function saveBalance(id) {
     var it = saveItems().filter(function (x) { return x.id === id; })[0];
     return (+(it && it.base) || 0) + sum(storedKeys(), function (k) { return savedOf(k, id) - sum(allWithdrawals(S.months[k]).filter(function (w) { return w.from === id; }), amt); });
@@ -366,6 +371,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     var t = totals(), st = saveTotal();
     FIGS = {
       income: money(t.income), spent: money(t.spent), saving: money(t.saving), bal: money(st.bal),
+      charity: money(sum((S.charity.income || []).filter(function (x) { return !(START && x.date && x.date.slice(0, 7) < START); }), amt) - sum((S.charity.spend || []).filter(function (x) { return !(START && x.date && x.date.slice(0, 7) < START); }), amt)),
       leftS: money(t.left.salary), leftP: money(t.left.pension),
       exp: money(t.exp), debts: money(t.debts), auto: money(t.auto),
       over: t.over ? "المصروفات تتجاوز الدخل بـ " + money(t.over) + " ريال" : ""
@@ -380,7 +386,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     function shift(d) { S.month = addMonths(S.month, d); render(); }
     var p = S.month.split("-").map(Number);
     return [
-      el("button", { class: "icon-btn", type: "button", "aria-label": "الشهر السابق", onclick: function () { shift(-1); } }, svg(I_PREV)),
+      el("button", { class: "icon-btn", type: "button", "aria-label": "الشهر السابق", disabled: START && S.month <= START ? true : null, style: START && S.month <= START ? "opacity:.35" : null, onclick: function () { shift(-1); } }, svg(I_PREV)),
       el("b", { text: fmtMonth.format(new Date(p[0], p[1] - 1, 1)) }),
       el("button", { class: "icon-btn", type: "button", "aria-label": "الشهر التالي", onclick: function () { shift(1); } }, svg(I_NEXT)),
       S.month !== realMonth() ? el("button", { class: "now-btn", type: "button", text: "الحالي", onclick: function () { S.month = realMonth(); render(); } }) : null
@@ -476,6 +482,37 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
       ];
     });
   }
+  /* الصندوق الخيري: its own account, apart from the budget; entries are dated, the panel lists the shown month's */
+  function charityPanel() {
+    var c = S.charity, path = "settings/charity";
+    c.income = c.income || []; c.spend = c.spend || [];
+    function counted(x) { return !(START && x.date && x.date.slice(0, 7) < START); }
+    function inMonth(x) { return (x.date || "").slice(0, 7) === S.month || (!x.date && S.month === realMonth()); }
+    var bal = sum(c.income.filter(counted), amt) - sum(c.spend.filter(counted), amt);
+    function list(key, title, ph, addText) {
+      var arr = c[key], shown = arr.filter(inMonth);
+      return [el("div", { class: "sub" }, title, el("span", { text: money(sum(shown, amt)) })),
+        shown.map(function (it) {
+          return [el("div", { class: "row nosrc", "data-id": it.id },
+              textInput(it.name, function (v) { it.name = v; save(path); }, "البيان", ph),
+              amountInput(it.amount, function (v) { it.amount = v; save(path); }, "المبلغ"),
+              delBtn(it.name, function () { arr.splice(arr.indexOf(it), 1); save(path); })),
+            el("div", { class: "meta" }, el("label", null, "التاريخ", el("input", { type: "date", value: it.date || "", style: "width:auto", onchange: function (e) { it.date = e.target.value; save(path); render(); } })))];
+        }),
+        el("div", { class: "acts" }, el("button", { class: "add", type: "button", text: addText, onclick: function () {
+          var d = new Date(), today = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+          var n = { id: uid(), name: "", amount: 0, date: S.month === realMonth() ? today : S.month + "-01" }; arr.push(n); save(path); render(); focusRow(n.id);
+        } }))];
+    }
+    return panel("charity", "الصندوق الخيري", "charity", function () {
+      return [
+        el("div", { class: "ro" }, el("span", { text: "رصيد الصندوق" }), el("b", { class: "num" + (bal < 0 ? " neg" : ""), text: money(bal) })),
+        list("income", "الوارد هذا الشهر", "المتبرع أو المصدر", "+ وارد"),
+        list("spend", "المصروف هذا الشهر", "وجه الصرف", "+ مصروف"),
+        el("p", { class: "hint", text: "حساب مستقل لا يدخل في الدخل والمصروفات." })
+      ];
+    });
+  }
   function savingsPanel() {
     var m = monthDoc(), path = mpath(), items = saveItems(), spath = "settings/savings";
     m.withdrawals = m.withdrawals || [];
@@ -554,7 +591,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     if ((last && new Date(last).getTime() >= since) || (closed && closed >= since)) return "";
     return "حان موعد النسخة الاحتياطية. صدّرها من «الإعدادات».";
   }
-  var setMsg = { text: "", cls: "" }, pendingImport = null, pinOpen = false, startKey = "", startMove = true, startArm = false;
+  var setMsg = { text: "", cls: "" }, pendingImport = null, pinOpen = false, startKey = "", startMove = true, startArm = false, startZero = true;
   function monthLabel(k) { var p = k.split("-").map(Number); return fmtMonth.format(new Date(p[0], p[1] - 1, 1)); }
   /* carry one month into another: empty amounts are filled, lists are added, nothing already there is overwritten */
   function moveMonth(from, to) {
@@ -585,27 +622,35 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
         return name;
       }
       /* the budget starts at a chosen month: optionally carry the month before into it, then drop every earlier month */
-      var startSel = startKey || S.month, prevKey = addMonths(startSel, -1), hasPrev = !!S.months[prevKey];
+      var startSel = startKey || START || S.month, prevKey = addMonths(startSel, -1), hasPrev = !!S.months[prevKey];
       var earlier = storedKeys().filter(function (k) { return k < startSel; });
       function applyStart() {
         var name = downloadBackup(), moved = 0;
         if (hasPrev && startMove) moved = moveMonth(prevKey, startSel);
         earlier.forEach(function (k) { delete S.months[k]; try { localStorage.removeItem(LS + "months/" + k); } catch (e) {} });
+        var zeroed = 0;
+        if (startZero) saveItems().forEach(function (it) { if (+it.base) { it.base = 0; zeroed++; } });
+        if (zeroed) flush("settings/savings");
+        var ch = 0;
+        ["income", "spend"].forEach(function (k) { var arr = S.charity[k] || []; for (var i = arr.length - 1; i >= 0; i--) if (arr[i].date && arr[i].date.slice(0, 7) < startSel) { arr.splice(i, 1); ch++; } });
+        if (ch) flush("settings/charity");
+        START = startSel; lsSet("settings/start", { month: START }); S.month = START;
         startArm = false; startKey = "";
-        say((moved ? "نُقلت بيانات " + monthLabel(prevKey) + " إلى " + monthLabel(startSel) + "، و" : "") + "حُذف " + fmt.format(earlier.length) + " من الأشهر السابقة. حُفظت نسخة احتياطية قبل التغيير: «" + name + "».");
+        say("صارت بداية الميزانية والديون والأمانة والصندوق الخيري " + monthLabel(START) + (moved ? "، ونُقلت إليها بيانات " + monthLabel(prevKey) : "") + (earlier.length ? "، وحُذف " + fmt.format(earlier.length) + " من الأشهر السابقة" : "") + (zeroed ? "، وصُفّرت المبالغ التأسيسية للأمانة" : "") + (ch ? "، وحُذف " + fmt.format(ch) + " من قيود الصندوق الخيري السابقة" : "") + ". حُفظت نسخة احتياطية قبل التغيير: «" + name + "».");
       }
-      var monthOpts = storedKeys().concat([realMonth()]).filter(function (k, i, a) { return a.indexOf(k) === i; }).sort().map(function (k) { return [k, monthLabel(k)]; });
+      var monthOpts = Object.keys(S.months).filter(function (k) { return /^\d{4}-\d{2}$/.test(k); }).concat([realMonth()]).filter(function (k, i, a) { return a.indexOf(k) === i; }).sort().map(function (k) { return [k, monthLabel(k)]; });
       var startBox = el("div", { class: "pb-block" },
         el("div", { class: "sub" }, "بداية الميزانية"),
         el("div", { class: "line" }, "تبدأ ميزانيتي من",
           selectEl(monthOpts, startSel, function (v) { startKey = v; startArm = false; render(); }, "شهر البداية")),
         hasPrev ? el("label", { class: "line" }, el("input", { type: "checkbox", checked: startMove ? true : null, style: "width:18px;height:18px", onchange: function (e) { startMove = e.target.checked; } }),
           "انقل بيانات " + monthLabel(prevKey) + " إلى " + monthLabel(startSel)) : null,
-        earlier.length ? el("div", { class: "line" },
-          el("button", { class: "add", type: "button", style: startArm ? "border-color:var(--bad);color:var(--bad)" : null, text: startArm ? "تأكيد: احذف " + fmt.format(earlier.length) + " من الأشهر قبل " + monthLabel(startSel) : "تطبيق", onclick: function () { if (startArm) applyStart(); else { startArm = true; render(); } } }),
-          startArm ? el("button", { class: "add", type: "button", text: "إلغاء", onclick: function () { startArm = false; render(); } }) : null)
-          : el("p", { class: "hint", text: "لا توجد أشهر قبل " + monthLabel(startSel) + "." }),
-        el("p", { class: "hint", text: "يُحذف كل شهر قبل شهر البداية من الدخل والمصروفات والأمانة. الديون وبنود الأمانة ومبالغها التأسيسية لا تتغير. تُنزَّل نسخة احتياطية تلقائيًا قبل التطبيق." }));
+        saveItems().some(function (it) { return +it.base; }) ? el("label", { class: "line" }, el("input", { type: "checkbox", checked: startZero ? true : null, style: "width:18px;height:18px", onchange: function (e) { startZero = e.target.checked; } }),
+          "صفّر المبالغ التأسيسية للأمانة (" + money(sum(saveItems(), function (it) { return +it.base || 0; })) + ")") : null,
+        START === startSel && !earlier.length ? el("p", { class: "hint ok-msg", text: "الميزانية تبدأ من " + monthLabel(START) + "." }) : el("div", { class: "line" },
+          el("button", { class: "add", type: "button", style: startArm ? "border-color:var(--bad);color:var(--bad)" : null, text: startArm ? (earlier.length ? "تأكيد: احذف " + fmt.format(earlier.length) + " من الأشهر قبل " + monthLabel(startSel) : "تأكيد") : "تطبيق", onclick: function () { if (startArm) applyStart(); else { startArm = true; render(); } } }),
+          startArm ? el("button", { class: "add", type: "button", text: "إلغاء", onclick: function () { startArm = false; render(); } }) : null),
+        el("p", { class: "hint", text: "كل شيء يبدأ من هذا الشهر: الدخل والمصروفات وأقساط الديون والأمانة والصندوق الخيري. الأشهر وقيود الصندوق قبله تُحذف ولا تُحسب. الديون تبقى بمتبقيها الحالي، وأقساطها تُحسب من شهر البداية فقط. تُنزَّل نسخة احتياطية تلقائيًا قبل التطبيق." }));
       function pick(e) {
         var f = e.target.files && e.target.files[0]; if (!f) return;
         var r = new FileReader();
@@ -657,7 +702,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     var y = window.scrollY;
     $("month").replaceChildren.apply($("month"), monthBar().filter(Boolean));
     $("sum").replaceChildren.apply($("sum"), summary().filter(Boolean));
-    $("panels").replaceChildren(incomePanel(), expensesPanel(), debtsPanel(), savingsPanel(), settingsPanel());
+    $("panels").replaceChildren(incomePanel(), expensesPanel(), debtsPanel(), savingsPanel(), charityPanel(), settingsPanel());
     $("ver").textContent = "الإصدار " + APP_VERSION;
     refresh();
     window.scrollTo(0, y);
