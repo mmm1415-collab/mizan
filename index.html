@@ -37,7 +37,7 @@ button { cursor: pointer; }
 /* top: title and month */
 .top { display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
 .top h1 { margin: 0; font-family: var(--font-display); font-size: 1.15rem; color: var(--gold); letter-spacing: .5px; }
-.month { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+.month { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 0; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
 .month b { font-family: var(--font-display); font-weight: 600; font-size: .98rem; min-width: 8.5em; text-align: center; }
 .icon-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel-2); display: inline-grid; place-items: center; padding: 0; color: var(--gold); flex: none; }
 .icon-btn svg { width: 18px; height: 18px; }
@@ -60,7 +60,9 @@ button { cursor: pointer; }
 .alert.info button { background: none; border: 0; color: inherit; font-size: 1.1rem; padding: 0 4px; }
 
 /* panels */
-.panels { display: grid; gap: 14px; margin-top: 10px; }
+.panels { display: grid; gap: 0; }
+/* thick white line between every section */
+hr.sep { border: 0; height: 4px; background: #fff; border-radius: 2px; margin: 14px 0; opacity: .9; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
 .ph { width: 100%; display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 12px 14px; text-align: right; }
 .ph h2 { margin: 0; flex: 1; font-family: var(--font-display); font-size: 1rem; font-weight: 600; }
@@ -138,7 +140,9 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
       <h1>ميزان</h1>
     </header>
     <div class="sum" id="sum"></div>
+    <hr class="sep">
     <div class="month" id="month"></div>
+    <hr class="sep">
     <div class="panels" id="panels"></div>
     <p class="ver" id="ver"></p>
   </div>
@@ -146,7 +150,7 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
 <script>
 (function () {
   "use strict";
-  var APP_VERSION = 75;
+  var APP_VERSION = 76;
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { maximumFractionDigits: 2 });
   var fmtAmt = new Intl.NumberFormat("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -758,7 +762,8 @@ input.amt { text-align: left; direction: ltr; font-variant-numeric: tabular-nums
     var y = window.scrollY;
     $("month").replaceChildren.apply($("month"), monthBar().filter(Boolean));
     $("sum").replaceChildren.apply($("sum"), summary().filter(Boolean));
-    $("panels").replaceChildren(incomePanel(), expensesPanel("salary"), expensesPanel("pension"), debtsPanel(), savingsPanel(), charityPanel(), settingsPanel());
+    var ps = [incomePanel(), expensesPanel("salary"), expensesPanel("pension"), debtsPanel(), savingsPanel(), charityPanel(), settingsPanel()];
+    $("panels").replaceChildren.apply($("panels"), ps.reduce(function (a, p, i) { if (i) a.push(el("hr", { class: "sep" })); a.push(p); return a; }, []));
     $("ver").textContent = "الإصدار " + APP_VERSION;
     refresh();
     window.scrollTo(0, y);
